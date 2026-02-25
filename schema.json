@@ -1,0 +1,115 @@
+{
+  "name": "dockge",
+  "displayName": "Dockge",
+  "version": "0.1.0",
+  "description": "A Pulumi provider for managing Dockge stacks via the REST API",
+  "keywords": ["pulumi", "dockge", "category/infrastructure"],
+  "license": "Apache-2.0",
+  "config": {
+    "variables": {
+      "url": {
+        "type": "string",
+        "description": "The URL of the Dockge server (e.g., http://192.168.1.100:5001)"
+      },
+      "apiKey": {
+        "type": "string",
+        "description": "API key for authenticating with the Dockge REST API",
+        "secret": true
+      }
+    },
+    "required": ["url", "apiKey"]
+  },
+  "provider": {
+    "description": "The Dockge provider configuration.",
+    "inputProperties": {
+      "url": {
+        "type": "string",
+        "description": "The URL of the Dockge server (e.g., http://192.168.1.100:5001)"
+      },
+      "apiKey": {
+        "type": "string",
+        "description": "API key for authenticating with the Dockge REST API",
+        "secret": true
+      }
+    },
+    "requiredInputs": ["url", "apiKey"],
+    "properties": {
+      "url": {
+        "type": "string",
+        "description": "The URL of the Dockge server"
+      },
+      "apiKey": {
+        "type": "string",
+        "description": "API key for authenticating with the Dockge REST API",
+        "secret": true
+      }
+    },
+    "required": ["url", "apiKey"]
+  },
+  "types": {
+    "dockge:index:DockgeContainerInfo": {
+      "type": "object",
+      "description": "Information about a container within a Dockge stack.",
+      "properties": {
+        "name": { "type": "string", "description": "Container name" },
+        "service": { "type": "string", "description": "Docker Compose service name" },
+        "image": { "type": "string", "description": "Container image" },
+        "state": { "type": "string", "description": "Container state (running, exited, etc.)" },
+        "status": { "type": "string", "description": "Human-readable container status" },
+        "health": { "type": "string", "description": "Container health status" },
+        "ports": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Port mappings"
+        }
+      }
+    }
+  },
+  "resources": {
+    "dockge:index:DockgeStack": {
+      "description": "Manages a Docker Compose stack on a Dockge server via the REST API. Supports creating, updating, starting, stopping, and deleting stacks.",
+      "inputProperties": {
+        "name": {
+          "type": "string",
+          "description": "The stack name. Must be unique on the Dockge server."
+        },
+        "composeYaml": {
+          "type": "string",
+          "description": "The Docker Compose YAML content for this stack."
+        },
+        "envFile": {
+          "type": "string",
+          "description": "Optional .env file content for the stack."
+        },
+        "running": {
+          "type": "boolean",
+          "description": "Whether the stack should be running (default: true).",
+          "default": true
+        }
+      },
+      "requiredInputs": ["name", "composeYaml"],
+      "properties": {
+        "name": { "type": "string", "description": "The stack name." },
+        "composeYaml": { "type": "string", "description": "The Docker Compose YAML content." },
+        "envFile": { "type": "string", "description": "The .env file content." },
+        "running": { "type": "boolean", "description": "Whether the stack is running." },
+        "status": { "type": "string", "description": "The current stack status (running, exited, stopped, partial, unknown)." },
+        "containers": {
+          "type": "array",
+          "items": { "$ref": "#/types/dockge:index:DockgeContainerInfo" },
+          "description": "Information about the containers in this stack."
+        }
+      },
+      "required": ["name", "composeYaml"]
+    }
+  },
+  "language": {
+    "nodejs": {
+      "packageName": "@pulumi/dockge",
+      "packageDescription": "A Pulumi provider for managing Dockge stacks",
+      "dependencies": {
+        "cross-fetch": "^4.0.0"
+      }
+    }
+  }
+}

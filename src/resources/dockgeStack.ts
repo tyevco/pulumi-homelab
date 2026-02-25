@@ -1,0 +1,218 @@
+import * as grpc from "@grpc/grpc-js";
+import { structToObject, objectToStruct, makeCheckFailure, GrpcCallback, GrpcCall } from "../helpers";
+import {
+  getStack,
+  createStack,
+  updateStack,
+  deleteStack,
+  startStack,
+  stopStack,
+  ensureConfigured,
+  DockgeStackInfo,
+} from "../dockgeClient";
+
+const providerProto = require("@pulumi/pulumi/proto/provider_pb");
+const emptyProto = require("google-protobuf/google/protobuf/empty_pb");
+
+function stackToOutputs(info: DockgeStackInfo, inputs: Record<string, any>): Record<string, any> {
+  return {
+    name: info.name,
+    composeYaml: inputs.composeYaml || info.composeYaml,
+    envFile: inputs.envFile || info.envFile || "",
+    running: inputs.running !== false,
+    status: info.status,
+    containers: info.containers || [],
+  };
+}
+
+export const dockgeStackResource = {
+  async check(call: GrpcCall<any, any>, callback: GrpcCallback<any>) {
+    const inputs = structToObject(call.request.getNews());
+    const failures: any[] = [];
+
+    if (!inputs.name) {
+      failures.push(makeCheckFailure("name", "name is required"));
+    }
+    if (!inputs.composeYaml) {
+      failures.push(makeCheckFailure("composeYaml", "composeYaml is required"));
+    }
+
+    // Default running to true if not specified
+    if (inputs.running === undefined || inputs.running === null) {
+      inputs.running = true;
+    }
+
+    const response = new providerProto.CheckResponse();
+    response.setInputs(objectToStruct(inputs));
+    failures.forEach((f) => response.addFailures(f));
+    callback(null, response);
+  },
+
+  async diff(call: GrpcCall<any, any>, callback: GrpcCallback<any>) {
+    const olds = structToObject(call.request.getOlds());
+    const news = structToObject(call.request.getNews());
+    const response = new providerProto.DiffResponse();
+    const diffs: string[] = [];
+    const replaces: string[] = [];
+
+    // Name change requires replacement
+    if (olds.name !== news.name) {
+      diffs.push("name");
+      replaces.push("name");
+    }
+
+    if (olds.composeYaml !== news.composeYaml) {
+      diffs.push("composeYaml");
+    }
+
+    if ((olds.envFile || "") !== (news.envFile || "")) {
+      diffs.push("envFile");
+    }
+
+    if (olds.running !== news.running) {
+      diffs.push("running");
+    }
+
+    response.setChanges(
+      diffs.length > 0
+        ? providerProto.DiffResponse.DiffChanges.DIFF_SOME
+        : providerProto.DiffResponse.DiffChanges.DIFF_NONE
+    );
+    diffs.forEach((d) => response.addDiffs(d));
+    replaces.forEach((r) => response.addReplaces(r));
+    response.setDeletebeforereplace(true);
+    callback(null, response);
+  },
+
+  async create(call: GrpcCall<any, any>, callback: GrpcCallback<any>) {
+    const inputs = structToObject(call.request.getProperties());
+
+    if (call.request.getPreview()) {
+      const response = new providerProto.CreateResponse();
+      response.setId(inputs.name || "preview");
+      response.setProperties(objectToStruct({
+        ...inputs,
+        status: "unknown",
+        containers: [],
+      }));
+      callback(null, response);
+      return;
+    }
+
+    try {
+      ensureConfigured();
+      const shouldStart = inputs.running !== false;
+      const info = await createStack(inputs.name, inputs.composeYaml, inputs.envFile, shouldStart);
+      const outputs = stackToOutputs(info, inputs);
+
+      const response = new providerProto.CreateResponse();
+      response.setId(inputs.name);
+      response.setProperties(objectToStruct(outputs));
+      callback(null, response);
+    } catch (err: any) {
+      callback({ code: grpc.status.INTERNAL, message: `Failed to create stack: ${err.message}` });
+    }
+  },
+
+  async read(call: GrpcCall<any, any>, callback: GrpcCallback<any>) {
+    const id = call.request.getId();
+    const currentInputs = structToObject(call.request.getInputs());
+
+    try {
+      ensureConfigured();
+      const info = await getStack(id);
+
+      const isRunning = info.status === "running" || info.status === "partial";
+      const outputs = {
+        name: info.name,
+        composeYaml: info.composeYaml,
+        envFile: info.envFile || "",
+        running: isRunning,
+        status: info.status,
+        containers: info.containers || [],
+      };
+
+      const response = new providerProto.ReadResponse();
+      response.setId(id);
+      response.setProperties(objectToStruct(outputs));
+      response.setInputs(objectToStruct({
+        name: info.name,
+        composeYaml: info.composeYaml,
+        envFile: info.envFile || "",
+        running: currentInputs.running !== undefined ? currentInputs.running : isRunning,
+      }));
+      callback(null, response);
+    } catch (err: any) {
+      // If 404, the stack doesn't exist — return empty response to trigger recreation
+      if (err.message && err.message.includes("404")) {
+        const response = new providerProto.ReadResponse();
+        callback(null, response);
+        return;
+      }
+      callback({ code: grpc.status.INTERNAL, message: `Failed to read stack: ${err.message}` });
+    }
+  },
+
+  async update(call: GrpcCall<any, any>, callback: GrpcCallback<any>) {
+    const olds = structToObject(call.request.getOlds());
+    const inputs = structToObject(call.request.getNews());
+
+    if (call.request.getPreview()) {
+      const response = new providerProto.UpdateResponse();
+      response.setProperties(objectToStruct({
+        ...inputs,
+        status: olds.status || "unknown",
+        containers: olds.containers || [],
+      }));
+      callback(null, response);
+      return;
+    }
+
+    try {
+      ensureConfigured();
+
+      // Check if compose or env changed
+      const composeChanged = olds.composeYaml !== inputs.composeYaml;
+      const envChanged = (olds.envFile || "") !== (inputs.envFile || "");
+      const runningChanged = olds.running !== inputs.running;
+
+      if (composeChanged || envChanged) {
+        // Update the stack (PUT will restart if it was running)
+        await updateStack(inputs.name, inputs.composeYaml, inputs.envFile);
+      }
+
+      // Handle running state changes
+      if (runningChanged) {
+        if (inputs.running) {
+          await startStack(inputs.name);
+        } else {
+          await stopStack(inputs.name);
+        }
+      }
+
+      const info = await getStack(inputs.name);
+      const outputs = stackToOutputs(info, inputs);
+
+      const response = new providerProto.UpdateResponse();
+      response.setProperties(objectToStruct(outputs));
+      callback(null, response);
+    } catch (err: any) {
+      callback({ code: grpc.status.INTERNAL, message: `Failed to update stack: ${err.message}` });
+    }
+  },
+
+  async delete(call: GrpcCall<any, any>, callback: GrpcCallback<any>) {
+    const id = call.request.getId();
+    try {
+      ensureConfigured();
+      await deleteStack(id);
+    } catch (err: any) {
+      // If already gone, that's fine
+      if (!err.message || !err.message.includes("404")) {
+        callback({ code: grpc.status.INTERNAL, message: `Failed to delete stack: ${err.message}` });
+        return;
+      }
+    }
+    callback(null, new emptyProto.Empty());
+  },
+};

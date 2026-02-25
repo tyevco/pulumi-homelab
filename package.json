@@ -1,0 +1,29 @@
+{
+  "name": "pulumi-dockge",
+  "version": "0.1.0",
+  "description": "A Pulumi native provider for managing Dockge stacks via the REST API",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist",
+    "rebuild": "npm run clean && npm run build"
+  },
+  "keywords": [
+    "pulumi",
+    "dockge",
+    "infrastructure",
+    "docker-compose"
+  ],
+  "license": "Apache-2.0",
+  "dependencies": {
+    "@pulumi/pulumi": "^3.132.0",
+    "@grpc/grpc-js": "^1.8.0",
+    "cross-fetch": "^4.0.0",
+    "google-protobuf": "3.21.4"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "@types/node": "^20.0.0",
+    "@types/google-protobuf": "^3.15.0"
+  }
+}
