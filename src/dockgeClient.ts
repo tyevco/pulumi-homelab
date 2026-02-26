@@ -20,6 +20,9 @@ export interface DockgeStackInfo {
   status: string;
   composeYaml: string;
   envFile: string;
+  composeOverride: string;
+  autostart: boolean;
+  displayName: string;
   containers: ContainerInfo[];
 }
 
@@ -90,24 +93,36 @@ export async function createStack(
   name: string,
   composeYaml: string,
   envFile?: string,
-  start?: boolean
+  start?: boolean,
+  composeOverride?: string,
+  autostart?: boolean,
+  displayName?: string,
 ): Promise<DockgeStackInfo> {
   return request<DockgeStackInfo>("POST", "/api/stacks", {
     name,
     composeYaml,
     envFile: envFile || "",
     start: start !== false,
+    composeOverride: composeOverride || "",
+    autostart: autostart || false,
+    displayName: displayName || "",
   });
 }
 
 export async function updateStack(
   name: string,
   composeYaml: string,
-  envFile?: string
+  envFile?: string,
+  composeOverride?: string,
+  autostart?: boolean,
+  displayName?: string,
 ): Promise<DockgeStackInfo> {
   return request<DockgeStackInfo>("PUT", `/api/stacks/${encodeURIComponent(name)}`, {
     composeYaml,
     envFile: envFile || "",
+    composeOverride: composeOverride !== undefined ? composeOverride : undefined,
+    autostart: autostart !== undefined ? autostart : undefined,
+    displayName: displayName !== undefined ? displayName : undefined,
   });
 }
 

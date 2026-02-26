@@ -19,6 +19,9 @@ function stackToOutputs(info: DockgeStackInfo, inputs: Record<string, any>): Rec
     name: info.name,
     composeYaml: inputs.composeYaml || info.composeYaml,
     envFile: inputs.envFile || info.envFile || "",
+    composeOverride: inputs.composeOverride !== undefined ? inputs.composeOverride : (info.composeOverride || ""),
+    autostart: inputs.autostart !== undefined ? inputs.autostart : (info.autostart || false),
+    displayName: inputs.displayName !== undefined ? inputs.displayName : (info.displayName || ""),
     running: inputs.running !== false,
     status: info.status,
     containers: info.containers || [],
@@ -73,6 +76,18 @@ export const dockgeStackResource = {
       diffs.push("running");
     }
 
+    if ((olds.composeOverride || "") !== (news.composeOverride || "")) {
+      diffs.push("composeOverride");
+    }
+
+    if ((olds.autostart || false) !== (news.autostart || false)) {
+      diffs.push("autostart");
+    }
+
+    if ((olds.displayName || "") !== (news.displayName || "")) {
+      diffs.push("displayName");
+    }
+
     response.setChanges(
       diffs.length > 0
         ? providerProto.DiffResponse.DiffChanges.DIFF_SOME
@@ -102,7 +117,7 @@ export const dockgeStackResource = {
     try {
       ensureConfigured();
       const shouldStart = inputs.running !== false;
-      const info = await createStack(inputs.name, inputs.composeYaml, inputs.envFile, shouldStart);
+      const info = await createStack(inputs.name, inputs.composeYaml, inputs.envFile, shouldStart, inputs.composeOverride, inputs.autostart, inputs.displayName);
       const outputs = stackToOutputs(info, inputs);
 
       const response = new providerProto.CreateResponse();
@@ -127,6 +142,9 @@ export const dockgeStackResource = {
         name: info.name,
         composeYaml: info.composeYaml,
         envFile: info.envFile || "",
+        composeOverride: info.composeOverride || "",
+        autostart: info.autostart || false,
+        displayName: info.displayName || "",
         running: isRunning,
         status: info.status,
         containers: info.containers || [],
@@ -139,6 +157,9 @@ export const dockgeStackResource = {
         name: info.name,
         composeYaml: info.composeYaml,
         envFile: info.envFile || "",
+        composeOverride: info.composeOverride || "",
+        autostart: info.autostart || false,
+        displayName: info.displayName || "",
         running: currentInputs.running !== undefined ? currentInputs.running : isRunning,
       }));
       callback(null, response);
@@ -174,11 +195,14 @@ export const dockgeStackResource = {
       // Check if compose or env changed
       const composeChanged = olds.composeYaml !== inputs.composeYaml;
       const envChanged = (olds.envFile || "") !== (inputs.envFile || "");
+      const overrideChanged = (olds.composeOverride || "") !== (inputs.composeOverride || "");
+      const autostartChanged = (olds.autostart || false) !== (inputs.autostart || false);
+      const displayNameChanged = (olds.displayName || "") !== (inputs.displayName || "");
       const runningChanged = olds.running !== inputs.running;
 
-      if (composeChanged || envChanged) {
+      if (composeChanged || envChanged || overrideChanged || autostartChanged || displayNameChanged) {
         // Update the stack (PUT will restart if it was running)
-        await updateStack(inputs.name, inputs.composeYaml, inputs.envFile);
+        await updateStack(inputs.name, inputs.composeYaml, inputs.envFile, inputs.composeOverride, inputs.autostart, inputs.displayName);
       }
 
       // Handle running state changes

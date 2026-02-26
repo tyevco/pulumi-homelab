@@ -17,6 +17,12 @@ export interface DockgeStackArgs {
   composeYaml: pulumi.Input<string>;
   /** Optional .env file content for the stack. */
   envFile?: pulumi.Input<string>;
+  /** Optional docker-compose.override.yml content for the stack. */
+  composeOverride?: pulumi.Input<string>;
+  /** Whether the stack should autostart (default: false). */
+  autostart?: pulumi.Input<boolean>;
+  /** Optional display name for the stack. */
+  displayName?: pulumi.Input<string>;
   /** Whether the stack should be running (default: true). */
   running?: pulumi.Input<boolean>;
 }
@@ -45,6 +51,9 @@ export class DockgeStack extends pulumi.CustomResource {
   declare readonly name: pulumi.Output<string>;
   declare readonly composeYaml: pulumi.Output<string>;
   declare readonly envFile: pulumi.Output<string>;
+  declare readonly composeOverride: pulumi.Output<string>;
+  declare readonly autostart: pulumi.Output<boolean>;
+  declare readonly displayName: pulumi.Output<string>;
   declare readonly running: pulumi.Output<boolean>;
   declare readonly status: pulumi.Output<string>;
   declare readonly containers: pulumi.Output<DockgeContainerInfo[]>;

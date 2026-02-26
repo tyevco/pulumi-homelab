@@ -4,7 +4,7 @@ const structProto = require("google-protobuf/google/protobuf/struct_pb");
 
 export function structToObject(struct: any): Record<string, any> {
   if (!struct) return {};
-  return struct.toJavaScript();
+  return unwrapSecrets(struct.toJavaScript());
 }
 
 export function objectToStruct(obj: Record<string, any>): any {
@@ -30,6 +30,22 @@ export function unwrapSecret(val: any): any {
     return val["value"];
   }
   return val;
+}
+
+/**
+ * Recursively unwrap all secret values in an object.
+ */
+export function unwrapSecrets(obj: Record<string, any>): Record<string, any> {
+  const result: Record<string, any> = {};
+  for (const [key, val] of Object.entries(obj)) {
+    const unwrapped = unwrapSecret(val);
+    if (unwrapped && typeof unwrapped === "object" && !Array.isArray(unwrapped)) {
+      result[key] = unwrapSecrets(unwrapped);
+    } else {
+      result[key] = unwrapped;
+    }
+  }
+  return result;
 }
 
 export function makeCheckFailure(property: string, reason: string): any {

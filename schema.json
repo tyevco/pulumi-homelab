@@ -81,6 +81,19 @@
           "type": "string",
           "description": "Optional .env file content for the stack."
         },
+        "composeOverride": {
+          "type": "string",
+          "description": "Optional docker-compose.override.yml content for the stack."
+        },
+        "autostart": {
+          "type": "boolean",
+          "description": "Whether the stack should autostart (default: false).",
+          "default": false
+        },
+        "displayName": {
+          "type": "string",
+          "description": "Optional display name for the stack."
+        },
         "running": {
           "type": "boolean",
           "description": "Whether the stack should be running (default: true).",
@@ -92,6 +105,9 @@
         "name": { "type": "string", "description": "The stack name." },
         "composeYaml": { "type": "string", "description": "The Docker Compose YAML content." },
         "envFile": { "type": "string", "description": "The .env file content." },
+        "composeOverride": { "type": "string", "description": "The docker-compose.override.yml content." },
+        "autostart": { "type": "boolean", "description": "Whether the stack autostarts." },
+        "displayName": { "type": "string", "description": "The display name for the stack." },
         "running": { "type": "boolean", "description": "Whether the stack is running." },
         "status": { "type": "string", "description": "The current stack status (running, exited, stopped, partial, unknown)." },
         "containers": {
