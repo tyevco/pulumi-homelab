@@ -1,7 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
 import * as grpc from "@grpc/grpc-js";
-import { structToObject, objectToStruct } from "./helpers";
+import { structToObject, objectToStruct, unwrapSecret } from "./helpers";
 import { configureDockgeClient } from "./dockgeClient";
 import { dispatchCheck, dispatchDiff, dispatchCreate, dispatchRead, dispatchUpdate, dispatchDelete } from "./provider";
 
@@ -40,9 +40,9 @@ const providerImpl = {
   ) {
     const args = structToObject(call.request.getArgs());
 
-    // Extract provider configuration
-    const url = args["url"] || args["dockge:config:url"] || "";
-    const apiKey = args["apiKey"] || args["dockge:config:apiKey"] || "";
+    // Extract provider configuration (unwrap secrets)
+    const url = unwrapSecret(args["url"] || args["dockge:config:url"]) || "";
+    const apiKey = unwrapSecret(args["apiKey"] || args["dockge:config:apiKey"]) || "";
 
     if (url && apiKey) {
       configureDockgeClient({ url, apiKey });

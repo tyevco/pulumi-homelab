@@ -18,6 +18,20 @@ export function objectToStruct(obj: Record<string, any>): any {
   return structProto.Struct.fromJavaScript(cleaned);
 }
 
+const SECRET_SIG = "4dabf18193072939515e22adb298388d";
+
+/**
+ * Unwrap a Pulumi secret value. Secrets are encoded as objects with a
+ * special signature key. Returns the plain value if wrapped, or the
+ * original value otherwise.
+ */
+export function unwrapSecret(val: any): any {
+  if (val && typeof val === "object" && val[SECRET_SIG] !== undefined) {
+    return val["value"];
+  }
+  return val;
+}
+
 export function makeCheckFailure(property: string, reason: string): any {
   const providerProto = require("@pulumi/pulumi/proto/provider_pb");
   const failure = new providerProto.CheckFailure();
