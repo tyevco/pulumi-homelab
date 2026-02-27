@@ -1,9 +1,11 @@
 import fetch from "cross-fetch";
 
-export interface DockgeClientConfig {
+export interface HomelabClientConfig {
   url: string;
   apiKey: string;
 }
+
+export type DockgeClientConfig = HomelabClientConfig;
 
 export interface ContainerInfo {
   name: string;
@@ -15,7 +17,7 @@ export interface ContainerInfo {
   ports: string[];
 }
 
-export interface DockgeStackInfo {
+export interface StackInfo {
   name: string;
   status: string;
   composeYaml: string;
@@ -26,19 +28,35 @@ export interface DockgeStackInfo {
   containers: ContainerInfo[];
 }
 
-let currentConfig: DockgeClientConfig | null = null;
+export type DockgeStackInfo = StackInfo;
 
-export function configureDockgeClient(config: DockgeClientConfig): void {
+let currentConfig: HomelabClientConfig | null = null;
+
+export function configureClient(config: HomelabClientConfig): void {
   currentConfig = config;
 }
 
-export function ensureConfigured(): DockgeClientConfig {
+export const configureDockgeClient = configureClient;
+
+export function ensureConfigured(): HomelabClientConfig {
   if (!currentConfig) {
     throw new Error(
-      "Dockge provider not configured. Set dockge:url and dockge:apiKey via pulumi config."
+      "Homelab provider not configured. Set homelab:url and homelab:apiKey via pulumi config."
     );
   }
   return currentConfig;
+}
+
+// Traefik interfaces
+export interface TraefikStaticInfo {
+  content: string;
+  lastModified: string;
+}
+
+export interface TraefikRouteInfo {
+  name: string;
+  content: string;
+  lastModified: string;
 }
 
 function baseUrl(): string {
@@ -81,12 +99,12 @@ async function request<T>(method: string, path: string, body?: any): Promise<T> 
   return res.json();
 }
 
-export async function listStacks(): Promise<DockgeStackInfo[]> {
-  return request<DockgeStackInfo[]>("GET", "/api/stacks");
+export async function listStacks(): Promise<StackInfo[]> {
+  return request<StackInfo[]>("GET", "/api/stacks");
 }
 
-export async function getStack(name: string): Promise<DockgeStackInfo> {
-  return request<DockgeStackInfo>("GET", `/api/stacks/${encodeURIComponent(name)}`);
+export async function getStack(name: string): Promise<StackInfo> {
+  return request<StackInfo>("GET", `/api/stacks/${encodeURIComponent(name)}`);
 }
 
 export async function createStack(
@@ -97,8 +115,8 @@ export async function createStack(
   composeOverride?: string,
   autostart?: boolean,
   displayName?: string,
-): Promise<DockgeStackInfo> {
-  return request<DockgeStackInfo>("POST", "/api/stacks", {
+): Promise<StackInfo> {
+  return request<StackInfo>("POST", "/api/stacks", {
     name,
     composeYaml,
     envFile: envFile || "",
@@ -116,8 +134,8 @@ export async function updateStack(
   composeOverride?: string,
   autostart?: boolean,
   displayName?: string,
-): Promise<DockgeStackInfo> {
-  return request<DockgeStackInfo>("PUT", `/api/stacks/${encodeURIComponent(name)}`, {
+): Promise<StackInfo> {
+  return request<StackInfo>("PUT", `/api/stacks/${encodeURIComponent(name)}`, {
     composeYaml,
     envFile: envFile || "",
     composeOverride: composeOverride !== undefined ? composeOverride : undefined,
@@ -130,10 +148,35 @@ export async function deleteStack(name: string): Promise<void> {
   await request<void>("DELETE", `/api/stacks/${encodeURIComponent(name)}`);
 }
 
-export async function startStack(name: string): Promise<DockgeStackInfo> {
-  return request<DockgeStackInfo>("POST", `/api/stacks/${encodeURIComponent(name)}/start`);
+export async function startStack(name: string): Promise<StackInfo> {
+  return request<StackInfo>("POST", `/api/stacks/${encodeURIComponent(name)}/start`);
 }
 
-export async function stopStack(name: string): Promise<DockgeStackInfo> {
-  return request<DockgeStackInfo>("POST", `/api/stacks/${encodeURIComponent(name)}/stop`);
+export async function stopStack(name: string): Promise<StackInfo> {
+  return request<StackInfo>("POST", `/api/stacks/${encodeURIComponent(name)}/stop`);
+}
+
+// Traefik API functions
+export async function getTraefikStatic(): Promise<TraefikStaticInfo> {
+  return request<TraefikStaticInfo>("GET", "/api/traefik/static");
+}
+
+export async function putTraefikStatic(content: string): Promise<TraefikStaticInfo> {
+  return request<TraefikStaticInfo>("PUT", "/api/traefik/static", { content });
+}
+
+export async function listTraefikRoutes(): Promise<TraefikRouteInfo[]> {
+  return request<TraefikRouteInfo[]>("GET", "/api/traefik/routes");
+}
+
+export async function getTraefikRoute(name: string): Promise<TraefikRouteInfo> {
+  return request<TraefikRouteInfo>("GET", `/api/traefik/routes/${encodeURIComponent(name)}`);
+}
+
+export async function putTraefikRoute(name: string, content: string): Promise<TraefikRouteInfo> {
+  return request<TraefikRouteInfo>("PUT", `/api/traefik/routes/${encodeURIComponent(name)}`, { content });
+}
+
+export async function deleteTraefikRoute(name: string): Promise<void> {
+  await request<void>("DELETE", `/api/traefik/routes/${encodeURIComponent(name)}`);
 }

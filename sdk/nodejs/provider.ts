@@ -1,7 +1,7 @@
 import * as pulumi from "@pulumi/pulumi";
 
 /**
- * The provider type for the Dockge package. By default, resources use package-wide configuration
+ * The provider type for the Homelab package. By default, resources use package-wide configuration
  * settings, however an explicit `Provider` instance may be created and passed during resource
  * construction to achieve fine-grained programmatic control over provider settings.
  */
@@ -14,7 +14,7 @@ export class Provider extends pulumi.ProviderResource {
       url: args.url,
       apiKey: args.apiKey,
     };
-    super("dockge", name, inputs, opts);
+    super("homelab", name, inputs, opts);
   }
 }
 

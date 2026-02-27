@@ -2,7 +2,7 @@ import * as fs from "fs";
 import * as path from "path";
 import * as grpc from "@grpc/grpc-js";
 import { structToObject, objectToStruct, unwrapSecret } from "./helpers";
-import { configureDockgeClient } from "./dockgeClient";
+import { configureClient } from "./dockgeClient";
 import { dispatchCheck, dispatchDiff, dispatchCreate, dispatchRead, dispatchUpdate, dispatchDelete } from "./provider";
 
 const providerProto = require("@pulumi/pulumi/proto/provider_pb");
@@ -41,11 +41,12 @@ const providerImpl = {
     const args = structToObject(call.request.getArgs());
 
     // Extract provider configuration (unwrap secrets)
-    const url = unwrapSecret(args["url"] || args["dockge:config:url"]) || "";
-    const apiKey = unwrapSecret(args["apiKey"] || args["dockge:config:apiKey"]) || "";
+    // Accept both homelab:config:* and legacy dockge:config:* prefixes
+    const url = unwrapSecret(args["url"] || args["homelab:config:url"] || args["dockge:config:url"]) || "";
+    const apiKey = unwrapSecret(args["apiKey"] || args["homelab:config:apiKey"] || args["dockge:config:apiKey"]) || "";
 
     if (url && apiKey) {
-      configureDockgeClient({ url, apiKey });
+      configureClient({ url, apiKey });
     }
 
     const response = new providerProto.ConfigureResponse();
@@ -67,14 +68,14 @@ const providerImpl = {
     if (!url) {
       const failure = new providerProto.CheckFailure();
       failure.setProperty("url");
-      failure.setReason("url is required. Set it via `pulumi config set dockge:url <url>`");
+      failure.setReason("url is required. Set it via `pulumi config set homelab:url <url>`");
       failures.push(failure);
     }
 
     if (!apiKey) {
       const failure = new providerProto.CheckFailure();
       failure.setProperty("apiKey");
-      failure.setReason("apiKey is required. Set it via `pulumi config set --secret dockge:apiKey <key>`");
+      failure.setReason("apiKey is required. Set it via `pulumi config set --secret homelab:apiKey <key>`");
       failures.push(failure);
     }
 

@@ -1,9 +1,14 @@
 {
-  "name": "@pulumi/dockge",
+  "name": "@pulumi/homelab",
   "version": "0.1.0",
-  "description": "Pulumi SDK for managing Dockge stacks",
+  "description": "Pulumi SDK for managing homelab infrastructure",
   "main": "index.js",
   "typings": "index.d.ts",
+  "files": [
+    "*.js",
+    "*.d.ts",
+    "package.json"
+  ],
   "scripts": {
     "build": "tsc"
   },

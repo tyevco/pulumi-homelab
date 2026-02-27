@@ -1,0 +1,21 @@
+import * as pulumi from "@pulumi/pulumi";
+
+export interface TraefikStaticConfigArgs {
+  /** The YAML content of the Traefik static configuration file. */
+  content: pulumi.Input<string>;
+}
+
+/**
+ * Manages the Traefik static configuration file (traefik.yml) via the Dockge REST API.
+ */
+export class TraefikStaticConfig extends pulumi.CustomResource {
+  public readonly content!: pulumi.Output<string>;
+  public readonly lastModified!: pulumi.Output<string>;
+
+  constructor(name: string, args: TraefikStaticConfigArgs, opts?: pulumi.CustomResourceOptions) {
+    super("homelab:index:TraefikStaticConfig", name, {
+      lastModified: undefined,
+      ...args,
+    }, opts);
+  }
+}

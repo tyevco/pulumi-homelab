@@ -1,5 +1,7 @@
 import { GrpcCallback, GrpcCall, getResourceType } from "./helpers";
-import { dockgeStackResource } from "./resources/dockgeStack";
+import { stackResource } from "./resources/stack";
+import { traefikStaticConfigResource } from "./resources/traefikStaticConfig";
+import { traefikRouteResource } from "./resources/traefikRoute";
 
 import * as grpc from "@grpc/grpc-js";
 
@@ -13,7 +15,10 @@ interface ResourceHandler {
 }
 
 const resourceHandlers: Record<string, ResourceHandler> = {
-  "dockge:index:DockgeStack": dockgeStackResource,
+  "homelab:index:Stack": stackResource,
+  "dockge:index:DockgeStack": stackResource, // backward compat
+  "homelab:index:TraefikStaticConfig": traefikStaticConfigResource,
+  "homelab:index:TraefikRoute": traefikRouteResource,
 };
 
 function getHandler(call: GrpcCall<any, any>): ResourceHandler | undefined {
