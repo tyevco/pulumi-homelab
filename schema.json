@@ -2,6 +2,7 @@
   "name": "homelab",
   "displayName": "Homelab",
   "version": "0.1.0",
+  "pluginDownloadURL": "github://api.github.com/tyevco/pulumi-homelab",
   "description": "A Pulumi provider for managing homelab infrastructure via the Dockge REST API",
   "keywords": ["pulumi", "homelab", "dockge", "category/infrastructure"],
   "license": "Apache-2.0",
@@ -156,7 +157,7 @@
   },
   "language": {
     "nodejs": {
-      "packageName": "@pulumi/homelab",
+      "packageName": "@tyevco/pulumi-homelab",
       "packageDescription": "A Pulumi provider for managing homelab infrastructure",
       "dependencies": {
         "cross-fetch": "^4.0.0"

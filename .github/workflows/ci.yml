@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    name: Build & Validate
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install provider dependencies
+        run: npm ci
+
+      - name: Build provider
+        run: npm run build
+
+      - name: Validate schema
+        run: node -e "JSON.parse(require('fs').readFileSync('schema.json','utf8'))"
+
+      - name: Install SDK dependencies
+        working-directory: sdk/nodejs
+        run: npm ci
+
+      - name: Build SDK
+        working-directory: sdk/nodejs
+        run: npm run build

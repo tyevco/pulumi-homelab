@@ -1,5 +1,5 @@
 {
-  "name": "@pulumi/homelab",
+  "name": "@tyevco/pulumi-homelab",
   "version": "0.1.0",
   "description": "Pulumi SDK for managing homelab infrastructure",
   "main": "index.js",
@@ -19,7 +19,14 @@
     "typescript": "^5.0.0",
     "@types/node": "^20.0.0"
   },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tyevco/pulumi-homelab.git",
+    "directory": "sdk/nodejs"
+  },
+  "license": "Apache-2.0",
   "pulumi": {
-    "resource": true
+    "resource": true,
+    "pluginDownloadURL": "github://api.github.com/tyevco/pulumi-homelab"
   }
 }
