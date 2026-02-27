@@ -14,7 +14,10 @@ export class Provider extends pulumi.ProviderResource {
       url: args.url,
       apiKey: args.apiKey,
     };
-    super("homelab", name, inputs, opts);
+    super("homelab", name, inputs, {
+      pluginDownloadURL: "github://api.github.com/tyevco/pulumi-homelab",
+      ...opts,
+    });
   }
 }
 

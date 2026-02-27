@@ -16,6 +16,9 @@ export class TraefikStaticConfig extends pulumi.CustomResource {
     super("homelab:index:TraefikStaticConfig", name, {
       lastModified: undefined,
       ...args,
-    }, opts);
+    }, {
+      pluginDownloadURL: "github://api.github.com/tyevco/pulumi-homelab",
+      ...opts,
+    });
   }
 }

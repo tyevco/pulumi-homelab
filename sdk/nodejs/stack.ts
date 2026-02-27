@@ -68,6 +68,7 @@ export class Stack extends pulumi.CustomResource {
       containers: undefined,
       ...args,
     }, {
+      pluginDownloadURL: "github://api.github.com/tyevco/pulumi-homelab",
       ...opts,
       aliases: [{ type: "dockge:index:DockgeStack" }],
     });
