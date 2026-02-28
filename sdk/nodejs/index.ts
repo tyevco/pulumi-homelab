@@ -9,6 +9,10 @@ export { TraefikStaticConfig, TraefikStaticConfigArgs } from "./traefikStaticCon
 export { TraefikRoute, TraefikRouteArgs } from "./traefikRoute";
 export { OpnsenseFirewallRule, OpnsenseFirewallRuleArgs } from "./opnsenseFirewallRule";
 export { OpnsenseAlias, OpnsenseAliasArgs } from "./opnsenseAlias";
+export { OpnsenseUnboundHostOverride, OpnsenseUnboundHostOverrideArgs } from "./opnsenseUnboundHostOverride";
+export { OpnsenseUnboundForward, OpnsenseUnboundForwardArgs } from "./opnsenseUnboundForward";
+export { OpnsenseUnboundAcl, OpnsenseUnboundAclArgs } from "./opnsenseUnboundAcl";
+export { OpnsenseUnboundDnsbl, OpnsenseUnboundDnsblArgs } from "./opnsenseUnboundDnsbl";
 
 // Backward compatibility aliases
 export { DockgeStack, DockgeStackArgs, DockgeContainerInfo } from "./stack";

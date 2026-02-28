@@ -26,6 +26,14 @@ import {
   ruleFromApi,
   aliasToApi,
   aliasFromApi,
+  hostOverrideToApi,
+  hostOverrideFromApi,
+  forwardToApi,
+  forwardFromApi,
+  aclToApi,
+  aclFromApi,
+  dnsblToApi,
+  dnsblFromApi,
 } from "../src/opnsenseClient";
 
 describe("ruleToApi", () => {
@@ -438,5 +446,468 @@ describe("CRUD functions", () => {
 
       await expect(client.getFirewallRule("x")).rejects.toThrow("Internal Server Error");
     });
+  });
+
+  describe("addHostOverride", () => {
+    it("sends POST with correct body", async () => {
+      const client = setupConfiguredModule();
+      mockedFetch.mockResolvedValueOnce(mockResponse({ uuid: "ho-1" }));
+
+      const result = await client.addHostOverride({ hostname: "test", domain: "example.com" });
+
+      expect(result).toEqual({ uuid: "ho-1" });
+      const [url, opts] = mockedFetch.mock.calls[0] as [string, any];
+      expect(url).toBe("https://fw.local/api/unbound/settings/addHostOverride");
+      expect(opts.method).toBe("POST");
+      expect(JSON.parse(opts.body)).toEqual({ hostoverride: { hostname: "test", domain: "example.com" } });
+    });
+  });
+
+  describe("getHostOverride", () => {
+    it("sends GET to correct URL", async () => {
+      const client = setupConfiguredModule();
+      mockedFetch.mockResolvedValueOnce(mockResponse({ hostoverride: { hostname: "test" } }));
+
+      await client.getHostOverride("ho-uuid");
+
+      const [url, opts] = mockedFetch.mock.calls[0] as [string, any];
+      expect(url).toBe("https://fw.local/api/unbound/settings/getHostOverride/ho-uuid");
+      expect(opts.method).toBe("GET");
+    });
+  });
+
+  describe("setHostOverride", () => {
+    it("sends POST with body", async () => {
+      const client = setupConfiguredModule();
+      mockedFetch.mockResolvedValueOnce(mockResponse({}));
+
+      await client.setHostOverride("ho-2", { hostname: "updated" });
+
+      const [url, opts] = mockedFetch.mock.calls[0] as [string, any];
+      expect(url).toBe("https://fw.local/api/unbound/settings/setHostOverride/ho-2");
+      expect(JSON.parse(opts.body)).toEqual({ hostoverride: { hostname: "updated" } });
+    });
+  });
+
+  describe("delHostOverride", () => {
+    it("sends POST to delete URL", async () => {
+      const client = setupConfiguredModule();
+      mockedFetch.mockResolvedValueOnce(mockResponse({}));
+
+      await client.delHostOverride("ho-3");
+
+      const [url, opts] = mockedFetch.mock.calls[0] as [string, any];
+      expect(url).toBe("https://fw.local/api/unbound/settings/delHostOverride/ho-3");
+      expect(opts.method).toBe("POST");
+    });
+  });
+
+  describe("addForward", () => {
+    it("sends POST with correct body", async () => {
+      const client = setupConfiguredModule();
+      mockedFetch.mockResolvedValueOnce(mockResponse({ uuid: "fwd-1" }));
+
+      const result = await client.addForward({ server: "8.8.8.8" });
+
+      expect(result).toEqual({ uuid: "fwd-1" });
+      const [url, opts] = mockedFetch.mock.calls[0] as [string, any];
+      expect(url).toBe("https://fw.local/api/unbound/settings/addForward");
+      expect(JSON.parse(opts.body)).toEqual({ forward: { server: "8.8.8.8" } });
+    });
+  });
+
+  describe("getForward", () => {
+    it("sends GET to correct URL", async () => {
+      const client = setupConfiguredModule();
+      mockedFetch.mockResolvedValueOnce(mockResponse({ forward: { server: "8.8.8.8" } }));
+
+      await client.getForward("fwd-uuid");
+
+      const [url, opts] = mockedFetch.mock.calls[0] as [string, any];
+      expect(url).toBe("https://fw.local/api/unbound/settings/getForward/fwd-uuid");
+      expect(opts.method).toBe("GET");
+    });
+  });
+
+  describe("setForward", () => {
+    it("sends POST with body", async () => {
+      const client = setupConfiguredModule();
+      mockedFetch.mockResolvedValueOnce(mockResponse({}));
+
+      await client.setForward("fwd-2", { server: "1.1.1.1" });
+
+      const [url, opts] = mockedFetch.mock.calls[0] as [string, any];
+      expect(url).toBe("https://fw.local/api/unbound/settings/setForward/fwd-2");
+      expect(JSON.parse(opts.body)).toEqual({ forward: { server: "1.1.1.1" } });
+    });
+  });
+
+  describe("delForward", () => {
+    it("sends POST to delete URL", async () => {
+      const client = setupConfiguredModule();
+      mockedFetch.mockResolvedValueOnce(mockResponse({}));
+
+      await client.delForward("fwd-3");
+
+      const [url, opts] = mockedFetch.mock.calls[0] as [string, any];
+      expect(url).toBe("https://fw.local/api/unbound/settings/delForward/fwd-3");
+      expect(opts.method).toBe("POST");
+    });
+  });
+
+  describe("addAcl", () => {
+    it("sends POST with correct body", async () => {
+      const client = setupConfiguredModule();
+      mockedFetch.mockResolvedValueOnce(mockResponse({ uuid: "acl-1" }));
+
+      const result = await client.addAcl({ name: "lan", networks: "10.0.0.0/8" });
+
+      expect(result).toEqual({ uuid: "acl-1" });
+      const [url, opts] = mockedFetch.mock.calls[0] as [string, any];
+      expect(url).toBe("https://fw.local/api/unbound/settings/addAcl");
+      expect(JSON.parse(opts.body)).toEqual({ acl: { name: "lan", networks: "10.0.0.0/8" } });
+    });
+  });
+
+  describe("getAcl", () => {
+    it("sends GET to correct URL", async () => {
+      const client = setupConfiguredModule();
+      mockedFetch.mockResolvedValueOnce(mockResponse({ acl: { name: "lan" } }));
+
+      await client.getAcl("acl-uuid");
+
+      const [url, opts] = mockedFetch.mock.calls[0] as [string, any];
+      expect(url).toBe("https://fw.local/api/unbound/settings/getAcl/acl-uuid");
+      expect(opts.method).toBe("GET");
+    });
+  });
+
+  describe("setAcl", () => {
+    it("sends POST with body", async () => {
+      const client = setupConfiguredModule();
+      mockedFetch.mockResolvedValueOnce(mockResponse({}));
+
+      await client.setAcl("acl-2", { name: "updated" });
+
+      const [url, opts] = mockedFetch.mock.calls[0] as [string, any];
+      expect(url).toBe("https://fw.local/api/unbound/settings/setAcl/acl-2");
+      expect(JSON.parse(opts.body)).toEqual({ acl: { name: "updated" } });
+    });
+  });
+
+  describe("delAcl", () => {
+    it("sends POST to delete URL", async () => {
+      const client = setupConfiguredModule();
+      mockedFetch.mockResolvedValueOnce(mockResponse({}));
+
+      await client.delAcl("acl-3");
+
+      const [url, opts] = mockedFetch.mock.calls[0] as [string, any];
+      expect(url).toBe("https://fw.local/api/unbound/settings/delAcl/acl-3");
+      expect(opts.method).toBe("POST");
+    });
+  });
+
+  describe("addDnsbl", () => {
+    it("sends POST with correct body", async () => {
+      const client = setupConfiguredModule();
+      mockedFetch.mockResolvedValueOnce(mockResponse({ uuid: "dnsbl-1" }));
+
+      const result = await client.addDnsbl({ description: "test blocklist" });
+
+      expect(result).toEqual({ uuid: "dnsbl-1" });
+      const [url, opts] = mockedFetch.mock.calls[0] as [string, any];
+      expect(url).toBe("https://fw.local/api/unbound/settings/addDnsbl");
+      expect(JSON.parse(opts.body)).toEqual({ dnsbl: { description: "test blocklist" } });
+    });
+  });
+
+  describe("getDnsbl", () => {
+    it("sends GET to correct URL", async () => {
+      const client = setupConfiguredModule();
+      mockedFetch.mockResolvedValueOnce(mockResponse({ dnsbl: { description: "test" } }));
+
+      await client.getDnsbl("dnsbl-uuid");
+
+      const [url, opts] = mockedFetch.mock.calls[0] as [string, any];
+      expect(url).toBe("https://fw.local/api/unbound/settings/getDnsbl/dnsbl-uuid");
+      expect(opts.method).toBe("GET");
+    });
+  });
+
+  describe("setDnsbl", () => {
+    it("sends POST with body", async () => {
+      const client = setupConfiguredModule();
+      mockedFetch.mockResolvedValueOnce(mockResponse({}));
+
+      await client.setDnsbl("dnsbl-2", { description: "updated" });
+
+      const [url, opts] = mockedFetch.mock.calls[0] as [string, any];
+      expect(url).toBe("https://fw.local/api/unbound/settings/setDnsbl/dnsbl-2");
+      expect(JSON.parse(opts.body)).toEqual({ dnsbl: { description: "updated" } });
+    });
+  });
+
+  describe("delDnsbl", () => {
+    it("sends POST to delete URL", async () => {
+      const client = setupConfiguredModule();
+      mockedFetch.mockResolvedValueOnce(mockResponse({}));
+
+      await client.delDnsbl("dnsbl-3");
+
+      const [url, opts] = mockedFetch.mock.calls[0] as [string, any];
+      expect(url).toBe("https://fw.local/api/unbound/settings/delDnsbl/dnsbl-3");
+      expect(opts.method).toBe("POST");
+    });
+  });
+});
+
+describe("withUnboundReconfigure", () => {
+  beforeEach(() => {
+    mockedFetch.mockReset();
+  });
+
+  function setupConfiguredModule() {
+    const client = require("../src/opnsenseClient");
+    client.configureOpnsenseClient({
+      url: "https://fw.local",
+      apiKey: "testkey",
+      apiSecret: "testsecret",
+    });
+    return client;
+  }
+
+  it("calls fn then reconfigure in order", async () => {
+    const client = setupConfiguredModule();
+
+    mockedFetch.mockResolvedValueOnce(mockResponse({})); // reconfigure
+
+    const result = await client.withUnboundReconfigure(async () => {
+      return "result-value";
+    });
+
+    expect(result).toBe("result-value");
+    expect(mockedFetch).toHaveBeenCalledTimes(1);
+    const [url] = mockedFetch.mock.calls[0] as [string, any];
+    expect(url).toContain("/api/unbound/service/reconfigure");
+  });
+
+  it("propagates fn error without calling reconfigure", async () => {
+    const client = setupConfiguredModule();
+
+    await expect(
+      client.withUnboundReconfigure(async () => {
+        throw new Error("mutation failed");
+      }),
+    ).rejects.toThrow("mutation failed");
+
+    expect(mockedFetch).toHaveBeenCalledTimes(0);
+  });
+});
+
+describe("hostOverrideToApi", () => {
+  it("converts booleans to '1'/'0'", () => {
+    const result = hostOverrideToApi({ enabled: true, addptr: false });
+    expect(result.enabled).toBe("1");
+    expect(result.addptr).toBe("0");
+  });
+
+  it("converts numbers to strings", () => {
+    const result = hostOverrideToApi({ mxprio: 10, ttl: 300 });
+    expect(result.mxprio).toBe("10");
+    expect(result.ttl).toBe("300");
+  });
+
+  it("passes through string fields", () => {
+    const result = hostOverrideToApi({ hostname: "test", domain: "example.com", rr: "A", server: "1.2.3.4" });
+    expect(result).toEqual({ hostname: "test", domain: "example.com", rr: "A", server: "1.2.3.4" });
+  });
+
+  it("omits undefined fields", () => {
+    const result = hostOverrideToApi({ domain: "example.com" });
+    expect(result).toEqual({ domain: "example.com" });
+  });
+});
+
+describe("hostOverrideFromApi", () => {
+  it("converts '1'/'0' to booleans", () => {
+    const result = hostOverrideFromApi({ enabled: "1", addptr: "0" });
+    expect(result.enabled).toBe(true);
+    expect(result.addptr).toBe(false);
+  });
+
+  it("converts string numbers to integers", () => {
+    const result = hostOverrideFromApi({ mxprio: "10", ttl: "300" });
+    expect(result.mxprio).toBe(10);
+    expect(result.ttl).toBe(300);
+  });
+
+  it("round-trips with hostOverrideToApi", () => {
+    const original = {
+      enabled: true,
+      hostname: "myhost",
+      domain: "example.com",
+      rr: "A",
+      server: "1.2.3.4",
+      mxprio: 10,
+      ttl: 300,
+      addptr: true,
+      description: "Test",
+    };
+    const api = hostOverrideToApi(original);
+    const back = hostOverrideFromApi(api);
+    expect(back).toEqual(original);
+  });
+});
+
+describe("forwardToApi", () => {
+  it("converts booleans to '1'/'0'", () => {
+    const result = forwardToApi({ enabled: true, forwardTcpUpstream: false, forwardFirst: true });
+    expect(result.enabled).toBe("1");
+    expect(result.forward_tcp_upstream).toBe("0");
+    expect(result.forward_first).toBe("1");
+  });
+
+  it("converts port to string", () => {
+    const result = forwardToApi({ port: 853 });
+    expect(result.port).toBe("853");
+  });
+
+  it("passes through string fields", () => {
+    const result = forwardToApi({ type: "dot", domain: "example.com", server: "1.1.1.1", verify: "cloudflare-dns.com" });
+    expect(result).toEqual({ type: "dot", domain: "example.com", server: "1.1.1.1", verify: "cloudflare-dns.com" });
+  });
+
+  it("omits undefined fields", () => {
+    const result = forwardToApi({ server: "8.8.8.8" });
+    expect(result).toEqual({ server: "8.8.8.8" });
+  });
+});
+
+describe("forwardFromApi", () => {
+  it("converts '1'/'0' to booleans", () => {
+    const result = forwardFromApi({ enabled: "1", forward_tcp_upstream: "0", forward_first: "1" });
+    expect(result.enabled).toBe(true);
+    expect(result.forwardTcpUpstream).toBe(false);
+    expect(result.forwardFirst).toBe(true);
+  });
+
+  it("converts string port to integer", () => {
+    const result = forwardFromApi({ port: "853" });
+    expect(result.port).toBe(853);
+  });
+
+  it("round-trips with forwardToApi", () => {
+    const original = {
+      enabled: true,
+      type: "dot",
+      domain: "example.com",
+      server: "1.1.1.1",
+      port: 853,
+      verify: "cloudflare-dns.com",
+      forwardTcpUpstream: true,
+      forwardFirst: false,
+      description: "CloudFlare DoT",
+    };
+    const api = forwardToApi(original);
+    const back = forwardFromApi(api);
+    expect(back).toEqual(original);
+  });
+});
+
+describe("aclToApi", () => {
+  it("converts enabled boolean to '1'/'0'", () => {
+    expect(aclToApi({ enabled: true }).enabled).toBe("1");
+    expect(aclToApi({ enabled: false }).enabled).toBe("0");
+  });
+
+  it("passes through string fields", () => {
+    const result = aclToApi({ name: "lan", action: "allow", networks: "10.0.0.0/8", description: "LAN" });
+    expect(result).toEqual({ name: "lan", action: "allow", networks: "10.0.0.0/8", description: "LAN" });
+  });
+
+  it("omits undefined fields", () => {
+    const result = aclToApi({ name: "test" });
+    expect(result).toEqual({ name: "test" });
+  });
+});
+
+describe("aclFromApi", () => {
+  it("converts enabled '1'/'0' to boolean", () => {
+    expect(aclFromApi({ enabled: "1" }).enabled).toBe(true);
+    expect(aclFromApi({ enabled: "0" }).enabled).toBe(false);
+  });
+
+  it("round-trips with aclToApi", () => {
+    const original = {
+      enabled: true,
+      name: "myacl",
+      action: "allow",
+      networks: "10.0.0.0/8",
+      description: "LAN access",
+    };
+    const api = aclToApi(original);
+    const back = aclFromApi(api);
+    expect(back).toEqual(original);
+  });
+});
+
+describe("dnsblToApi", () => {
+  it("converts booleans to '1'/'0'", () => {
+    const result = dnsblToApi({ enabled: true, nxdomain: false });
+    expect(result.enabled).toBe("1");
+    expect(result.nxdomain).toBe("0");
+  });
+
+  it("converts cacheTtl to string", () => {
+    const result = dnsblToApi({ cacheTtl: 72000 });
+    expect(result.cache_ttl).toBe("72000");
+  });
+
+  it("maps camelCase to snake_case", () => {
+    const result = dnsblToApi({ sourceNets: "10.0.0.0/8" });
+    expect(result.source_nets).toBe("10.0.0.0/8");
+  });
+
+  it("omits undefined fields", () => {
+    const result = dnsblToApi({ description: "test" });
+    expect(result).toEqual({ description: "test" });
+  });
+});
+
+describe("dnsblFromApi", () => {
+  it("converts '1'/'0' to booleans", () => {
+    const result = dnsblFromApi({ enabled: "1", nxdomain: "0" });
+    expect(result.enabled).toBe(true);
+    expect(result.nxdomain).toBe(false);
+  });
+
+  it("converts cache_ttl to integer", () => {
+    const result = dnsblFromApi({ cache_ttl: "72000" });
+    expect(result.cacheTtl).toBe(72000);
+  });
+
+  it("maps snake_case to camelCase", () => {
+    const result = dnsblFromApi({ source_nets: "10.0.0.0/8" });
+    expect(result.sourceNets).toBe("10.0.0.0/8");
+  });
+
+  it("round-trips with dnsblToApi", () => {
+    const original = {
+      enabled: true,
+      type: "dnsbl",
+      lists: "list1,list2",
+      allowlists: "good.com",
+      blocklists: "bad.com",
+      wildcards: "*.ads.com",
+      sourceNets: "10.0.0.0/8",
+      address: "127.0.0.1",
+      nxdomain: true,
+      cacheTtl: 72000,
+      description: "My blocklist",
+    };
+    const api = dnsblToApi(original);
+    const back = dnsblFromApi(api);
+    expect(back).toEqual(original);
   });
 });
