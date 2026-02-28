@@ -156,6 +156,18 @@ function deepDiff(
 }
 
 /**
+ * Diff two plain YAML strings, returning granular property changes.
+ * No compose-specific merging or normalization is applied.
+ */
+export function diffYaml(oldYaml: string, newYaml: string): PropertyChange[] {
+  const oldObj = safeParseYaml(oldYaml);
+  const newObj = safeParseYaml(newYaml);
+  const changes: PropertyChange[] = [];
+  deepDiff(oldObj, newObj, "", changes);
+  return changes;
+}
+
+/**
  * Diff two compose configurations (main + optional override), returning granular property changes.
  *
  * Merges main + override following Docker Compose semantics, normalizes
