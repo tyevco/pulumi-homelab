@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.2](https://github.com/tyevco/pulumi-homelab/compare/v0.2.1...v0.2.2) (2026-02-28)
+
+
+### Bug Fixes
+
+* release-please tag matching, CI tests, and publish workflow ([7ee9ef5](https://github.com/tyevco/pulumi-homelab/commit/7ee9ef5846680a78fd08cdd15cfecba7011fd001))
+* run publish steps directly in release-please workflow ([e10ec90](https://github.com/tyevco/pulumi-homelab/commit/e10ec9077dd36ea57e91a5cfe1b21bd67049ffe4))
+
 ## [0.2.1](https://github.com/tyevco/pulumi-homelab/compare/v0.2.0...v0.2.1) (2026-02-28)
 
 
