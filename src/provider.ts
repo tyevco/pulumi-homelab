@@ -4,6 +4,10 @@ import { traefikStaticConfigResource } from "./resources/traefikStaticConfig";
 import { traefikRouteResource } from "./resources/traefikRoute";
 import { opnsenseFirewallRuleResource } from "./resources/opnsenseFirewallRule";
 import { opnsenseAliasResource } from "./resources/opnsenseAlias";
+import { opnsenseUnboundHostOverrideResource } from "./resources/opnsenseUnboundHostOverride";
+import { opnsenseUnboundForwardResource } from "./resources/opnsenseUnboundForward";
+import { opnsenseUnboundAclResource } from "./resources/opnsenseUnboundAcl";
+import { opnsenseUnboundDnsblResource } from "./resources/opnsenseUnboundDnsbl";
 
 import * as grpc from "@grpc/grpc-js";
 
@@ -23,6 +27,10 @@ const resourceHandlers: Record<string, ResourceHandler> = {
   "homelab:index:TraefikRoute": traefikRouteResource,
   "homelab:index:OpnsenseFirewallRule": opnsenseFirewallRuleResource,
   "homelab:index:OpnsenseAlias": opnsenseAliasResource,
+  "homelab:index:OpnsenseUnboundHostOverride": opnsenseUnboundHostOverrideResource,
+  "homelab:index:OpnsenseUnboundForward": opnsenseUnboundForwardResource,
+  "homelab:index:OpnsenseUnboundAcl": opnsenseUnboundAclResource,
+  "homelab:index:OpnsenseUnboundDnsbl": opnsenseUnboundDnsblResource,
 };
 
 function getHandler(call: GrpcCall<any, any>): ResourceHandler | undefined {
