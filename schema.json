@@ -1,7 +1,7 @@
 {
   "name": "homelab",
   "displayName": "Homelab",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "pluginDownloadURL": "github://api.github.com/tyevco/pulumi-homelab",
   "description": "A Pulumi provider for managing homelab infrastructure including Dockge stacks, Traefik routes, and OPNsense firewall rules",
   "keywords": ["pulumi", "homelab", "dockge", "opnsense", "firewall", "category/infrastructure"],

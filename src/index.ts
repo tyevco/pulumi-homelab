@@ -16,13 +16,17 @@ const schema = fs.readFileSync(
   "utf-8"
 );
 
+const packageJson = JSON.parse(
+  fs.readFileSync(path.join(__dirname, "..", "package.json"), "utf-8")
+);
+
 const providerImpl = {
   getPluginInfo(
     call: grpc.ServerUnaryCall<any, any>,
     callback: grpc.sendUnaryData<any>
   ) {
     const response = new pluginProto.PluginInfo();
-    response.setVersion(require("../package.json").version);
+    response.setVersion(packageJson.version);
     callback(null, response);
   },
 

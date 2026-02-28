@@ -49,56 +49,47 @@ function unknownResourceError(call: GrpcCall<any, any>): grpc.ServiceError {
   };
 }
 
-export function dispatchCheck(call: GrpcCall<any, any>, callback: GrpcCallback<any>) {
+function safeDispatch(
+  call: GrpcCall<any, any>,
+  callback: GrpcCallback<any>,
+  method: keyof ResourceHandler,
+) {
   const handler = getHandler(call);
   if (!handler) {
     callback(unknownResourceError(call));
     return;
   }
-  handler.check(call, callback);
+  handler[method](call, callback).catch((err: any) => {
+    callback({
+      code: grpc.status.INTERNAL,
+      details: err.message || String(err),
+      message: err.message || String(err),
+      metadata: new grpc.Metadata(),
+      name: "ServiceError",
+    });
+  });
+}
+
+export function dispatchCheck(call: GrpcCall<any, any>, callback: GrpcCallback<any>) {
+  safeDispatch(call, callback, "check");
 }
 
 export function dispatchDiff(call: GrpcCall<any, any>, callback: GrpcCallback<any>) {
-  const handler = getHandler(call);
-  if (!handler) {
-    callback(unknownResourceError(call));
-    return;
-  }
-  handler.diff(call, callback);
+  safeDispatch(call, callback, "diff");
 }
 
 export function dispatchCreate(call: GrpcCall<any, any>, callback: GrpcCallback<any>) {
-  const handler = getHandler(call);
-  if (!handler) {
-    callback(unknownResourceError(call));
-    return;
-  }
-  handler.create(call, callback);
+  safeDispatch(call, callback, "create");
 }
 
 export function dispatchRead(call: GrpcCall<any, any>, callback: GrpcCallback<any>) {
-  const handler = getHandler(call);
-  if (!handler) {
-    callback(unknownResourceError(call));
-    return;
-  }
-  handler.read(call, callback);
+  safeDispatch(call, callback, "read");
 }
 
 export function dispatchUpdate(call: GrpcCall<any, any>, callback: GrpcCallback<any>) {
-  const handler = getHandler(call);
-  if (!handler) {
-    callback(unknownResourceError(call));
-    return;
-  }
-  handler.update(call, callback);
+  safeDispatch(call, callback, "update");
 }
 
 export function dispatchDelete(call: GrpcCall<any, any>, callback: GrpcCallback<any>) {
-  const handler = getHandler(call);
-  if (!handler) {
-    callback(unknownResourceError(call));
-    return;
-  }
-  handler.delete(call, callback);
+  safeDispatch(call, callback, "delete");
 }
