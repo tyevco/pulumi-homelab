@@ -6,10 +6,22 @@ import {
   deleteTraefikRoute,
   ensureConfigured,
 } from "../dockgeClient";
+import { diffYaml } from "../composeDiff";
 import YAML from "yaml";
 
 const providerProto = require("@pulumi/pulumi/proto/provider_pb");
 const emptyProto = require("google-protobuf/google/protobuf/empty_pb");
+
+function setDetailedDiff(
+  map: any,
+  path: string,
+  kind: "ADD" | "DELETE" | "UPDATE",
+): void {
+  const propDiff = new providerProto.PropertyDiff();
+  propDiff.setKind(providerProto.PropertyDiff.Kind[kind]);
+  propDiff.setInputdiff(true);
+  map.set(path, propDiff);
+}
 
 export const traefikRouteResource = {
   async check(call: GrpcCall<any, any>, callback: GrpcCallback<any>) {
@@ -59,10 +71,14 @@ export const traefikRouteResource = {
     // Content change is in-place update
     if ((olds.content || "") !== (news.content || "")) {
       diffs.push("content");
-      const propDiff = new providerProto.PropertyDiff();
-      propDiff.setKind(providerProto.PropertyDiff.Kind.UPDATE);
-      propDiff.setInputdiff(true);
-      detailedDiffMap.set("content", propDiff);
+      try {
+        const changes = diffYaml(olds.content || "", news.content || "");
+        for (const change of changes) {
+          setDetailedDiff(detailedDiffMap, `content.${change.path}`, change.kind);
+        }
+      } catch {
+        setDetailedDiff(detailedDiffMap, "content", "UPDATE");
+      }
     }
 
     response.setHasdetaileddiff(true);
