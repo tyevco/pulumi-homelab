@@ -3,6 +3,7 @@ import * as path from "path";
 import * as grpc from "@grpc/grpc-js";
 import { structToObject, objectToStruct, unwrapSecret } from "./helpers";
 import { configureClient } from "./dockgeClient";
+import { configureOpnsenseClient } from "./opnsenseClient";
 import { dispatchCheck, dispatchDiff, dispatchCreate, dispatchRead, dispatchUpdate, dispatchDelete } from "./provider";
 
 const providerProto = require("@pulumi/pulumi/proto/provider_pb");
@@ -21,7 +22,7 @@ const providerImpl = {
     callback: grpc.sendUnaryData<any>
   ) {
     const response = new pluginProto.PluginInfo();
-    response.setVersion("0.1.0");
+    response.setVersion(require("../package.json").version);
     callback(null, response);
   },
 
@@ -40,13 +41,27 @@ const providerImpl = {
   ) {
     const args = structToObject(call.request.getArgs());
 
-    // Extract provider configuration (unwrap secrets)
-    // Accept both homelab:config:* and legacy dockge:config:* prefixes
+    // Extract Dockge configuration (unwrap secrets)
     const url = unwrapSecret(args["url"] || args["homelab:config:url"] || args["dockge:config:url"]) || "";
     const apiKey = unwrapSecret(args["apiKey"] || args["homelab:config:apiKey"] || args["dockge:config:apiKey"]) || "";
 
     if (url && apiKey) {
       configureClient({ url, apiKey });
+    }
+
+    // Extract OPNsense configuration
+    const opnsenseUrl = unwrapSecret(args["opnsenseUrl"] || args["homelab:config:opnsenseUrl"]) || "";
+    const opnsenseApiKey = unwrapSecret(args["opnsenseApiKey"] || args["homelab:config:opnsenseApiKey"]) || "";
+    const opnsenseApiSecret = unwrapSecret(args["opnsenseApiSecret"] || args["homelab:config:opnsenseApiSecret"]) || "";
+    const opnsenseInsecure = unwrapSecret(args["opnsenseInsecure"] || args["homelab:config:opnsenseInsecure"]) || false;
+
+    if (opnsenseUrl && opnsenseApiKey && opnsenseApiSecret) {
+      configureOpnsenseClient({
+        url: opnsenseUrl,
+        apiKey: opnsenseApiKey,
+        apiSecret: opnsenseApiSecret,
+        insecure: opnsenseInsecure === true || opnsenseInsecure === "true",
+      });
     }
 
     const response = new providerProto.ConfigureResponse();
@@ -62,21 +77,46 @@ const providerImpl = {
     const news = structToObject(call.request.getNews());
     const failures: any[] = [];
 
+    // Dockge cross-dependency: if either field is set, both are required
     const url = news["url"] || "";
     const apiKey = news["apiKey"] || "";
-
-    if (!url) {
+    if (url && !apiKey) {
+      const failure = new providerProto.CheckFailure();
+      failure.setProperty("apiKey");
+      failure.setReason("apiKey is required when url is set. Set it via `pulumi config set --secret homelab:apiKey <key>`");
+      failures.push(failure);
+    }
+    if (!url && apiKey) {
       const failure = new providerProto.CheckFailure();
       failure.setProperty("url");
-      failure.setReason("url is required. Set it via `pulumi config set homelab:url <url>`");
+      failure.setReason("url is required when apiKey is set. Set it via `pulumi config set homelab:url <url>`");
       failures.push(failure);
     }
 
-    if (!apiKey) {
-      const failure = new providerProto.CheckFailure();
-      failure.setProperty("apiKey");
-      failure.setReason("apiKey is required. Set it via `pulumi config set --secret homelab:apiKey <key>`");
-      failures.push(failure);
+    // OPNsense cross-dependency: if any OPNsense field is set, all three required fields must be set
+    const opnsenseUrl = news["opnsenseUrl"] || "";
+    const opnsenseApiKey = news["opnsenseApiKey"] || "";
+    const opnsenseApiSecret = news["opnsenseApiSecret"] || "";
+    const anyOpnsense = opnsenseUrl || opnsenseApiKey || opnsenseApiSecret;
+    if (anyOpnsense) {
+      if (!opnsenseUrl) {
+        const failure = new providerProto.CheckFailure();
+        failure.setProperty("opnsenseUrl");
+        failure.setReason("opnsenseUrl is required when other OPNsense fields are set. Set it via `pulumi config set homelab:opnsenseUrl <url>`");
+        failures.push(failure);
+      }
+      if (!opnsenseApiKey) {
+        const failure = new providerProto.CheckFailure();
+        failure.setProperty("opnsenseApiKey");
+        failure.setReason("opnsenseApiKey is required when other OPNsense fields are set. Set it via `pulumi config set --secret homelab:opnsenseApiKey <key>`");
+        failures.push(failure);
+      }
+      if (!opnsenseApiSecret) {
+        const failure = new providerProto.CheckFailure();
+        failure.setProperty("opnsenseApiSecret");
+        failure.setReason("opnsenseApiSecret is required when other OPNsense fields are set. Set it via `pulumi config set --secret homelab:opnsenseApiSecret <secret>`");
+        failures.push(failure);
+      }
     }
 
     const response = new providerProto.CheckResponse();
