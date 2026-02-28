@@ -1,5 +1,8 @@
 import * as pulumi from "@pulumi/pulumi";
 
+const PLUGIN_VERSION: string = require("./package.json").version;
+const PLUGIN_DOWNLOAD_URL = "github://api.github.com/tyevco/pulumi-homelab";
+
 /**
  * The provider type for the Homelab package. By default, resources use package-wide configuration
  * settings, however an explicit `Provider` instance may be created and passed during resource
@@ -15,7 +18,8 @@ export class Provider extends pulumi.ProviderResource {
       apiKey: args.apiKey,
     };
     super("homelab", name, inputs, {
-      pluginDownloadURL: "github://api.github.com/tyevco/pulumi-homelab",
+      version: PLUGIN_VERSION,
+      pluginDownloadURL: PLUGIN_DOWNLOAD_URL,
       ...opts,
     });
   }

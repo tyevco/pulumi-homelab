@@ -1,5 +1,8 @@
 import * as pulumi from "@pulumi/pulumi";
 
+const PLUGIN_VERSION: string = require("./package.json").version;
+const PLUGIN_DOWNLOAD_URL = "github://api.github.com/tyevco/pulumi-homelab";
+
 export interface TraefikStaticConfigArgs {
   /** The YAML content of the Traefik static configuration file. */
   content: pulumi.Input<string>;
@@ -17,7 +20,8 @@ export class TraefikStaticConfig extends pulumi.CustomResource {
       lastModified: undefined,
       ...args,
     }, {
-      pluginDownloadURL: "github://api.github.com/tyevco/pulumi-homelab",
+      version: PLUGIN_VERSION,
+      pluginDownloadURL: PLUGIN_DOWNLOAD_URL,
       ...opts,
     });
   }

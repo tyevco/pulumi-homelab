@@ -1,5 +1,8 @@
 import * as pulumi from "@pulumi/pulumi";
 
+const PLUGIN_VERSION: string = require("./package.json").version;
+const PLUGIN_DOWNLOAD_URL = "github://api.github.com/tyevco/pulumi-homelab";
+
 export interface ContainerInfo {
   name: string;
   service: string;
@@ -68,7 +71,8 @@ export class Stack extends pulumi.CustomResource {
       containers: undefined,
       ...args,
     }, {
-      pluginDownloadURL: "github://api.github.com/tyevco/pulumi-homelab",
+      version: PLUGIN_VERSION,
+      pluginDownloadURL: PLUGIN_DOWNLOAD_URL,
       ...opts,
       aliases: [{ type: "dockge:index:DockgeStack" }],
     });
