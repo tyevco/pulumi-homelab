@@ -1,6 +1,6 @@
 {
   "name": "pulumi-homelab",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "A Pulumi native provider for managing homelab infrastructure via the Dockge REST API",
   "main": "dist/index.js",
   "scripts": {
