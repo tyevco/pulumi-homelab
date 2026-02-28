@@ -54,8 +54,8 @@ jobs:
           # Install production-only dependencies into staging
           cp package-lock.json "$STAGING/"
           cd "$STAGING" && npm ci --omit=dev && rm package-lock.json
-          # Remove .bin symlinks — Pulumi's archive extractor can't handle them
-          rm -rf node_modules/.bin
+          # Remove all .bin symlinks — Pulumi's archive extractor can't handle them
+          find node_modules -name '.bin' -type d -exec rm -rf {} +
           echo "STAGING=$STAGING" >> "$GITHUB_ENV"
 
       - name: Create platform archives
