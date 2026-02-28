@@ -281,6 +281,3 @@ export const stackResource = {
     callback(null, new emptyProto.Empty());
   },
 };
-
-// Backward compatibility
-export const dockgeStackResource = stackResource;
