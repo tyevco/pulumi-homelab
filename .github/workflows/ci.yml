@@ -27,6 +27,9 @@ jobs:
       - name: Build provider
         run: npm run build
 
+      - name: Run tests
+        run: npm test
+
       - name: Validate schema
         run: node -e "JSON.parse(require('fs').readFileSync('schema.json','utf8'))"
 

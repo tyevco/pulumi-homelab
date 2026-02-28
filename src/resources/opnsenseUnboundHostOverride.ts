@@ -27,10 +27,6 @@ export const opnsenseUnboundHostOverrideResource = {
     if (!inputs.domain) {
       failures.push(makeCheckFailure("domain", "domain is required"));
     }
-    if (!inputs.rr && inputs.rr !== "") {
-      // Apply default only if not explicitly set
-    }
-
     // Apply defaults
     if (inputs.enabled === undefined) inputs.enabled = true;
     if (inputs.rr === undefined) inputs.rr = "A";
