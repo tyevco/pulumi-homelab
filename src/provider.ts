@@ -2,6 +2,8 @@ import { GrpcCallback, GrpcCall, getResourceType } from "./helpers";
 import { stackResource } from "./resources/stack";
 import { traefikStaticConfigResource } from "./resources/traefikStaticConfig";
 import { traefikRouteResource } from "./resources/traefikRoute";
+import { opnsenseFirewallRuleResource } from "./resources/opnsenseFirewallRule";
+import { opnsenseAliasResource } from "./resources/opnsenseAlias";
 
 import * as grpc from "@grpc/grpc-js";
 
@@ -19,6 +21,8 @@ const resourceHandlers: Record<string, ResourceHandler> = {
   "dockge:index:DockgeStack": stackResource, // backward compat
   "homelab:index:TraefikStaticConfig": traefikStaticConfigResource,
   "homelab:index:TraefikRoute": traefikRouteResource,
+  "homelab:index:OpnsenseFirewallRule": opnsenseFirewallRuleResource,
+  "homelab:index:OpnsenseAlias": opnsenseAliasResource,
 };
 
 function getHandler(call: GrpcCall<any, any>): ResourceHandler | undefined {

@@ -3,8 +3,8 @@
   "displayName": "Homelab",
   "version": "0.1.0",
   "pluginDownloadURL": "github://api.github.com/tyevco/pulumi-homelab",
-  "description": "A Pulumi provider for managing homelab infrastructure via the Dockge REST API",
-  "keywords": ["pulumi", "homelab", "dockge", "category/infrastructure"],
+  "description": "A Pulumi provider for managing homelab infrastructure including Dockge stacks, Traefik routes, and OPNsense firewall rules",
+  "keywords": ["pulumi", "homelab", "dockge", "opnsense", "firewall", "category/infrastructure"],
   "license": "Apache-2.0",
   "config": {
     "variables": {
@@ -16,9 +16,27 @@
         "type": "string",
         "description": "API key for authenticating with the Dockge REST API",
         "secret": true
+      },
+      "opnsenseUrl": {
+        "type": "string",
+        "description": "The URL of the OPNsense server (e.g., https://192.168.1.1)"
+      },
+      "opnsenseApiKey": {
+        "type": "string",
+        "description": "API key for authenticating with the OPNsense REST API",
+        "secret": true
+      },
+      "opnsenseApiSecret": {
+        "type": "string",
+        "description": "API secret for authenticating with the OPNsense REST API",
+        "secret": true
+      },
+      "opnsenseInsecure": {
+        "type": "boolean",
+        "description": "Skip TLS certificate verification for OPNsense API (default: false)",
+        "default": false
       }
-    },
-    "required": ["url", "apiKey"]
+    }
   },
   "provider": {
     "description": "The Homelab provider configuration.",
@@ -31,9 +49,26 @@
         "type": "string",
         "description": "API key for authenticating with the Dockge REST API",
         "secret": true
+      },
+      "opnsenseUrl": {
+        "type": "string",
+        "description": "The URL of the OPNsense server (e.g., https://192.168.1.1)"
+      },
+      "opnsenseApiKey": {
+        "type": "string",
+        "description": "API key for authenticating with the OPNsense REST API",
+        "secret": true
+      },
+      "opnsenseApiSecret": {
+        "type": "string",
+        "description": "API secret for authenticating with the OPNsense REST API",
+        "secret": true
+      },
+      "opnsenseInsecure": {
+        "type": "boolean",
+        "description": "Skip TLS certificate verification for OPNsense API (default: false)"
       }
     },
-    "requiredInputs": ["url", "apiKey"],
     "properties": {
       "url": {
         "type": "string",
@@ -43,9 +78,26 @@
         "type": "string",
         "description": "API key for authenticating with the Dockge REST API",
         "secret": true
+      },
+      "opnsenseUrl": {
+        "type": "string",
+        "description": "The URL of the OPNsense server"
+      },
+      "opnsenseApiKey": {
+        "type": "string",
+        "description": "API key for authenticating with the OPNsense REST API",
+        "secret": true
+      },
+      "opnsenseApiSecret": {
+        "type": "string",
+        "description": "API secret for authenticating with the OPNsense REST API",
+        "secret": true
+      },
+      "opnsenseInsecure": {
+        "type": "boolean",
+        "description": "Skip TLS certificate verification for OPNsense API"
       }
-    },
-    "required": ["url", "apiKey"]
+    }
   },
   "types": {
     "homelab:index:ContainerInfo": {
@@ -153,6 +205,121 @@
         "lastModified": { "type": "string", "description": "ISO 8601 timestamp of the last modification." }
       },
       "required": ["name", "content"]
+    },
+    "homelab:index:OpnsenseFirewallRule": {
+      "description": "Manages a firewall filter rule on an OPNsense appliance via the REST API.",
+      "inputProperties": {
+        "description": {
+          "type": "string",
+          "description": "Description of the firewall rule."
+        },
+        "interface": {
+          "type": "string",
+          "description": "Network interface (e.g., lan, wan, opt1)."
+        },
+        "ipprotocol": {
+          "type": "string",
+          "description": "IP protocol version: inet (IPv4), inet6 (IPv6), or inet46 (both). Default: inet."
+        },
+        "protocol": {
+          "type": "string",
+          "description": "Protocol to match (e.g., any, TCP, UDP, TCP/UDP, ICMP). Default: any."
+        },
+        "sourceNet": {
+          "type": "string",
+          "description": "Source network or address (e.g., any, 192.168.1.0/24, or an alias name)."
+        },
+        "sourcePort": {
+          "type": "string",
+          "description": "Source port or port range."
+        },
+        "destinationNet": {
+          "type": "string",
+          "description": "Destination network or address."
+        },
+        "destinationPort": {
+          "type": "string",
+          "description": "Destination port or port range."
+        },
+        "action": {
+          "type": "string",
+          "description": "Rule action: pass, block, or reject."
+        },
+        "direction": {
+          "type": "string",
+          "description": "Traffic direction: in or out. Default: in."
+        },
+        "log": {
+          "type": "boolean",
+          "description": "Whether to log packets matching this rule."
+        },
+        "quick": {
+          "type": "boolean",
+          "description": "Apply quick match (stop processing after this rule). Default: true."
+        },
+        "disabled": {
+          "type": "boolean",
+          "description": "Whether the rule is disabled."
+        },
+        "sequence": {
+          "type": "integer",
+          "description": "Rule priority/order sequence number."
+        }
+      },
+      "requiredInputs": ["action", "interface"],
+      "properties": {
+        "uuid": { "type": "string", "description": "The UUID assigned by OPNsense." },
+        "description": { "type": "string", "description": "Description of the firewall rule." },
+        "interface": { "type": "string", "description": "Network interface." },
+        "ipprotocol": { "type": "string", "description": "IP protocol version." },
+        "protocol": { "type": "string", "description": "Protocol to match." },
+        "sourceNet": { "type": "string", "description": "Source network or address." },
+        "sourcePort": { "type": "string", "description": "Source port or port range." },
+        "destinationNet": { "type": "string", "description": "Destination network or address." },
+        "destinationPort": { "type": "string", "description": "Destination port or port range." },
+        "action": { "type": "string", "description": "Rule action." },
+        "direction": { "type": "string", "description": "Traffic direction." },
+        "log": { "type": "boolean", "description": "Whether to log matching packets." },
+        "quick": { "type": "boolean", "description": "Apply quick match." },
+        "disabled": { "type": "boolean", "description": "Whether the rule is disabled." },
+        "sequence": { "type": "integer", "description": "Rule priority/order sequence number." }
+      },
+      "required": ["uuid", "action", "interface"]
+    },
+    "homelab:index:OpnsenseAlias": {
+      "description": "Manages a firewall alias on an OPNsense appliance via the REST API.",
+      "inputProperties": {
+        "name": {
+          "type": "string",
+          "description": "The alias name. Must be unique."
+        },
+        "type": {
+          "type": "string",
+          "description": "Alias type: host, network, port, url, or urltable."
+        },
+        "content": {
+          "type": "string",
+          "description": "Alias content (newline-separated entries, e.g., IP addresses, networks, ports, or URLs)."
+        },
+        "description": {
+          "type": "string",
+          "description": "Description of the alias."
+        },
+        "enabled": {
+          "type": "boolean",
+          "description": "Whether the alias is enabled. Default: true."
+        }
+      },
+      "requiredInputs": ["name", "type"],
+      "properties": {
+        "uuid": { "type": "string", "description": "The UUID assigned by OPNsense." },
+        "name": { "type": "string", "description": "The alias name." },
+        "type": { "type": "string", "description": "Alias type." },
+        "content": { "type": "string", "description": "Alias content." },
+        "description": { "type": "string", "description": "Description of the alias." },
+        "enabled": { "type": "boolean", "description": "Whether the alias is enabled." }
+      },
+      "required": ["uuid", "name", "type"]
     }
   },
   "language": {
