@@ -303,6 +303,16 @@ describe("TraefikRoute read", () => {
     expect(response.getId()).toBeFalsy();
   });
 
+  it("returns empty response on 'not found' text", async () => {
+    homelabClient.getTraefikRoute.mockRejectedValue(new Error("resource not found"));
+
+    const call = makeReadCall("gone-route");
+    const { err, response } = await callHandler(traefikRouteResource.read, call);
+
+    expect(err).toBeNull();
+    expect(response.getId()).toBeFalsy();
+  });
+
   it("returns error on non-404/503 failure", async () => {
     homelabClient.getTraefikRoute.mockRejectedValue(new Error("connection timeout"));
 
@@ -376,6 +386,15 @@ describe("TraefikRoute delete", () => {
 
   it("ignores 404 on delete", async () => {
     homelabClient.deleteTraefikRoute.mockRejectedValue(new Error("Homelab API DELETE failed (404): not found"));
+
+    const call = makeDeleteCall("gone-route");
+    const { err } = await callHandler(traefikRouteResource.delete, call);
+
+    expect(err).toBeNull();
+  });
+
+  it("ignores 'not found' text on delete", async () => {
+    homelabClient.deleteTraefikRoute.mockRejectedValue(new Error("resource not found"));
 
     const call = makeDeleteCall("gone-route");
     const { err } = await callHandler(traefikRouteResource.delete, call);

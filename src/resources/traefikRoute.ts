@@ -143,7 +143,7 @@ export const traefikRouteResource = {
       }));
       callback(null, response);
     } catch (err: any) {
-      if (err.message && (err.message.includes("404") || err.message.includes("503"))) {
+      if (err.message && (err.message.includes("404") || err.message.includes("not found") || err.message.includes("503"))) {
         const response = new providerProto.ReadResponse();
         callback(null, response);
         return;
@@ -187,7 +187,9 @@ export const traefikRouteResource = {
       ensureConfigured();
       await deleteTraefikRoute(id);
     } catch (err: any) {
-      if (!err.message || !err.message.includes("404")) {
+      if (err.message && (err.message.includes("404") || err.message.includes("not found"))) {
+        // Already gone — treat as success
+      } else {
         callback({ code: grpc.status.INTERNAL, message: `Failed to delete traefik route: ${err.message}` });
         return;
       }

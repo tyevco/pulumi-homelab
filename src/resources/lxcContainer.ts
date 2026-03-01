@@ -180,7 +180,7 @@ export const lxcContainerResource = {
       }));
       callback(null, response);
     } catch (err: any) {
-      if (err.message && err.message.includes("404")) {
+      if (err.message && (err.message.includes("404") || err.message.includes("not found"))) {
         const response = new providerProto.ReadResponse();
         callback(null, response);
         return;
@@ -236,7 +236,9 @@ export const lxcContainerResource = {
       }
       await deleteLxcContainer(id);
     } catch (err: any) {
-      if (!err.message || !err.message.includes("404")) {
+      if (err.message && (err.message.includes("404") || err.message.includes("not found"))) {
+        // Already gone — treat as success
+      } else {
         callback({ code: grpc.status.INTERNAL, message: `Failed to delete LXC container: ${err.message}` });
         return;
       }
