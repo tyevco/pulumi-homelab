@@ -86,9 +86,9 @@ function isSelectedMap(val: any): boolean {
   return entries.every((v: any) => v && typeof v === "object" && "selected" in v);
 }
 
-function extractSelected(val: Record<string, { value: string; selected: number }>): string {
+function extractSelected(val: Record<string, { value: string; selected: number | boolean | string }>): string {
   return Object.entries(val)
-    .filter(([, v]) => v.selected === 1)
+    .filter(([, v]) => v.selected === 1 || v.selected === true || v.selected === "1")
     .map(([k]) => k)
     .join("\n");
 }
@@ -101,6 +101,19 @@ export function normalizeGetItemResponse<T extends Record<string, any>>(data: T)
     }
   }
   return result;
+}
+
+// Ensure a value is a flat string. If an object (e.g. un-normalized selected map)
+// slips through, convert it rather than passing the object to Struct serialization.
+function ensureString(val: any): string {
+  if (val === null || val === undefined) return "";
+  if (typeof val === "string") return val;
+  if (typeof val === "object" && !Array.isArray(val)) {
+    // Attempt to extract selected value from a selected-map that slipped through
+    if (isSelectedMap(val)) return extractSelected(val);
+    return "";
+  }
+  return String(val);
 }
 
 // Safe integer parsing — returns undefined instead of NaN for empty/invalid strings
@@ -380,20 +393,20 @@ export function ruleToApi(inputs: Record<string, any>): FirewallRuleData {
 
 export function ruleFromApi(rule: FirewallRuleData): Record<string, any> {
   const result: Record<string, any> = {};
-  if (rule.description !== undefined) result.description = rule.description;
-  if (rule.interface !== undefined) result.interface = rule.interface;
-  if (rule.ipprotocol !== undefined) result.ipprotocol = rule.ipprotocol;
-  if (rule.protocol !== undefined) result.protocol = rule.protocol;
-  if (rule.source_net !== undefined) result.sourceNet = rule.source_net;
-  if (rule.source_port !== undefined) result.sourcePort = rule.source_port;
-  if (rule.destination_net !== undefined) result.destinationNet = rule.destination_net;
-  if (rule.destination_port !== undefined) result.destinationPort = rule.destination_port;
-  if (rule.action !== undefined) result.action = rule.action;
-  if (rule.direction !== undefined) result.direction = rule.direction;
-  if (rule.log !== undefined) result.log = toBool(rule.log);
-  if (rule.quick !== undefined) result.quick = toBool(rule.quick);
-  if (rule.disabled !== undefined) result.disabled = toBool(rule.disabled);
-  if (rule.sequence !== undefined) result.sequence = safeParseInt(rule.sequence);
+  if (rule.description !== undefined) result.description = ensureString(rule.description);
+  if (rule.interface !== undefined) result.interface = ensureString(rule.interface);
+  if (rule.ipprotocol !== undefined) result.ipprotocol = ensureString(rule.ipprotocol);
+  if (rule.protocol !== undefined) result.protocol = ensureString(rule.protocol);
+  if (rule.source_net !== undefined) result.sourceNet = ensureString(rule.source_net);
+  if (rule.source_port !== undefined) result.sourcePort = ensureString(rule.source_port);
+  if (rule.destination_net !== undefined) result.destinationNet = ensureString(rule.destination_net);
+  if (rule.destination_port !== undefined) result.destinationPort = ensureString(rule.destination_port);
+  if (rule.action !== undefined) result.action = ensureString(rule.action);
+  if (rule.direction !== undefined) result.direction = ensureString(rule.direction);
+  if (rule.log !== undefined) result.log = toBool(ensureString(rule.log));
+  if (rule.quick !== undefined) result.quick = toBool(ensureString(rule.quick));
+  if (rule.disabled !== undefined) result.disabled = toBool(ensureString(rule.disabled));
+  if (rule.sequence !== undefined) result.sequence = safeParseInt(ensureString(rule.sequence));
   return result;
 }
 
@@ -409,11 +422,11 @@ export function aliasToApi(inputs: Record<string, any>): AliasData {
 
 export function aliasFromApi(alias: AliasData): Record<string, any> {
   const result: Record<string, any> = {};
-  if (alias.name !== undefined) result.name = alias.name;
-  if (alias.type !== undefined) result.type = alias.type;
-  if (alias.content !== undefined) result.content = alias.content;
-  if (alias.description !== undefined) result.description = alias.description;
-  if (alias.enabled !== undefined) result.enabled = toBool(alias.enabled);
+  if (alias.name !== undefined) result.name = ensureString(alias.name);
+  if (alias.type !== undefined) result.type = ensureString(alias.type);
+  if (alias.content !== undefined) result.content = ensureString(alias.content);
+  if (alias.description !== undefined) result.description = ensureString(alias.description);
+  if (alias.enabled !== undefined) result.enabled = toBool(ensureString(alias.enabled));
   return result;
 }
 
@@ -436,17 +449,17 @@ export function hostOverrideToApi(inputs: Record<string, any>): HostOverrideData
 
 export function hostOverrideFromApi(data: HostOverrideData): Record<string, any> {
   const result: Record<string, any> = {};
-  if (data.enabled !== undefined) result.enabled = toBool(data.enabled);
-  if (data.hostname !== undefined) result.hostname = data.hostname;
-  if (data.domain !== undefined) result.domain = data.domain;
-  if (data.rr !== undefined) result.rr = data.rr;
-  if (data.server !== undefined) result.server = data.server;
-  if (data.mxprio !== undefined) result.mxprio = safeParseInt(data.mxprio);
-  if (data.mx !== undefined) result.mx = data.mx;
-  if (data.txtdata !== undefined) result.txtdata = data.txtdata;
-  if (data.ttl !== undefined) result.ttl = safeParseInt(data.ttl);
-  if (data.addptr !== undefined) result.addptr = toBool(data.addptr);
-  if (data.description !== undefined) result.description = data.description;
+  if (data.enabled !== undefined) result.enabled = toBool(ensureString(data.enabled));
+  if (data.hostname !== undefined) result.hostname = ensureString(data.hostname);
+  if (data.domain !== undefined) result.domain = ensureString(data.domain);
+  if (data.rr !== undefined) result.rr = ensureString(data.rr);
+  if (data.server !== undefined) result.server = ensureString(data.server);
+  if (data.mxprio !== undefined) result.mxprio = safeParseInt(ensureString(data.mxprio));
+  if (data.mx !== undefined) result.mx = ensureString(data.mx);
+  if (data.txtdata !== undefined) result.txtdata = ensureString(data.txtdata);
+  if (data.ttl !== undefined) result.ttl = safeParseInt(ensureString(data.ttl));
+  if (data.addptr !== undefined) result.addptr = toBool(ensureString(data.addptr));
+  if (data.description !== undefined) result.description = ensureString(data.description);
   return result;
 }
 
@@ -467,15 +480,15 @@ export function forwardToApi(inputs: Record<string, any>): ForwardData {
 
 export function forwardFromApi(data: ForwardData): Record<string, any> {
   const result: Record<string, any> = {};
-  if (data.enabled !== undefined) result.enabled = toBool(data.enabled);
-  if (data.type !== undefined) result.type = data.type;
-  if (data.domain !== undefined) result.domain = data.domain;
-  if (data.server !== undefined) result.server = data.server;
-  if (data.port !== undefined) result.port = safeParseInt(data.port);
-  if (data.verify !== undefined) result.verify = data.verify;
-  if (data.forward_tcp_upstream !== undefined) result.forwardTcpUpstream = toBool(data.forward_tcp_upstream);
-  if (data.forward_first !== undefined) result.forwardFirst = toBool(data.forward_first);
-  if (data.description !== undefined) result.description = data.description;
+  if (data.enabled !== undefined) result.enabled = toBool(ensureString(data.enabled));
+  if (data.type !== undefined) result.type = ensureString(data.type);
+  if (data.domain !== undefined) result.domain = ensureString(data.domain);
+  if (data.server !== undefined) result.server = ensureString(data.server);
+  if (data.port !== undefined) result.port = safeParseInt(ensureString(data.port));
+  if (data.verify !== undefined) result.verify = ensureString(data.verify);
+  if (data.forward_tcp_upstream !== undefined) result.forwardTcpUpstream = toBool(ensureString(data.forward_tcp_upstream));
+  if (data.forward_first !== undefined) result.forwardFirst = toBool(ensureString(data.forward_first));
+  if (data.description !== undefined) result.description = ensureString(data.description);
   return result;
 }
 
@@ -492,11 +505,11 @@ export function aclToApi(inputs: Record<string, any>): AclData {
 
 export function aclFromApi(data: AclData): Record<string, any> {
   const result: Record<string, any> = {};
-  if (data.enabled !== undefined) result.enabled = toBool(data.enabled);
-  if (data.name !== undefined) result.name = data.name;
-  if (data.action !== undefined) result.action = data.action;
-  if (data.networks !== undefined) result.networks = data.networks;
-  if (data.description !== undefined) result.description = data.description;
+  if (data.enabled !== undefined) result.enabled = toBool(ensureString(data.enabled));
+  if (data.name !== undefined) result.name = ensureString(data.name);
+  if (data.action !== undefined) result.action = ensureString(data.action);
+  if (data.networks !== undefined) result.networks = ensureString(data.networks);
+  if (data.description !== undefined) result.description = ensureString(data.description);
   return result;
 }
 
@@ -519,16 +532,16 @@ export function dnsblToApi(inputs: Record<string, any>): DnsblData {
 
 export function dnsblFromApi(data: DnsblData): Record<string, any> {
   const result: Record<string, any> = {};
-  if (data.enabled !== undefined) result.enabled = toBool(data.enabled);
-  if (data.type !== undefined) result.type = data.type;
-  if (data.lists !== undefined) result.lists = data.lists;
-  if (data.allowlists !== undefined) result.allowlists = data.allowlists;
-  if (data.blocklists !== undefined) result.blocklists = data.blocklists;
-  if (data.wildcards !== undefined) result.wildcards = data.wildcards;
-  if (data.source_nets !== undefined) result.sourceNets = data.source_nets;
-  if (data.address !== undefined) result.address = data.address;
-  if (data.nxdomain !== undefined) result.nxdomain = toBool(data.nxdomain);
-  if (data.cache_ttl !== undefined) result.cacheTtl = safeParseInt(data.cache_ttl);
-  if (data.description !== undefined) result.description = data.description;
+  if (data.enabled !== undefined) result.enabled = toBool(ensureString(data.enabled));
+  if (data.type !== undefined) result.type = ensureString(data.type);
+  if (data.lists !== undefined) result.lists = ensureString(data.lists);
+  if (data.allowlists !== undefined) result.allowlists = ensureString(data.allowlists);
+  if (data.blocklists !== undefined) result.blocklists = ensureString(data.blocklists);
+  if (data.wildcards !== undefined) result.wildcards = ensureString(data.wildcards);
+  if (data.source_nets !== undefined) result.sourceNets = ensureString(data.source_nets);
+  if (data.address !== undefined) result.address = ensureString(data.address);
+  if (data.nxdomain !== undefined) result.nxdomain = toBool(ensureString(data.nxdomain));
+  if (data.cache_ttl !== undefined) result.cacheTtl = safeParseInt(ensureString(data.cache_ttl));
+  if (data.description !== undefined) result.description = ensureString(data.description);
   return result;
 }

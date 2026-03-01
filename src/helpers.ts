@@ -7,15 +7,26 @@ export function structToObject(struct: any): Record<string, any> {
   return unwrapSecrets(struct.toJavaScript());
 }
 
-export function objectToStruct(obj: Record<string, any>): any {
-  // Clean out undefined values before converting
-  const cleaned: Record<string, any> = {};
-  for (const [key, value] of Object.entries(obj)) {
-    if (value !== undefined) {
-      cleaned[key] = value;
+// Recursively strip undefined values from nested objects/arrays so that
+// Struct.fromJavaScript never encounters an undefined (which throws
+// "Unexpected struct type").
+function deepClean(val: any): any {
+  if (val === undefined) return null;
+  if (Array.isArray(val)) return val.map(deepClean);
+  if (val !== null && typeof val === "object") {
+    const out: Record<string, any> = {};
+    for (const [k, v] of Object.entries(val)) {
+      if (v !== undefined) {
+        out[k] = deepClean(v);
+      }
     }
+    return out;
   }
-  return structProto.Struct.fromJavaScript(cleaned);
+  return val;
+}
+
+export function objectToStruct(obj: Record<string, any>): any {
+  return structProto.Struct.fromJavaScript(deepClean(obj));
 }
 
 const SECRET_SIG = "4dabf18193072939515e22adb298388d";
