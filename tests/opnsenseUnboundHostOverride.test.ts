@@ -1,5 +1,18 @@
-import { makeCheckCall, makeDiffCall, callHandler } from "./testUtils";
+import { makeCheckCall, makeDiffCall, makeCreateCall, makeReadCall, makeUpdateCall, makeDeleteCall, callHandler } from "./testUtils";
 import { opnsenseUnboundHostOverrideResource } from "../src/resources/opnsenseUnboundHostOverride";
+
+jest.mock("../src/opnsenseClient", () => ({
+  ensureOpnsenseConfigured: jest.fn(),
+  withUnboundReconfigure: jest.fn((fn: () => Promise<any>) => fn()),
+  addHostOverride: jest.fn(),
+  getHostOverride: jest.fn(),
+  setHostOverride: jest.fn(),
+  delHostOverride: jest.fn(),
+  hostOverrideToApi: jest.fn((inputs: any) => ({ hostname: inputs.hostname, domain: inputs.domain })),
+  hostOverrideFromApi: jest.fn((data: any) => ({ hostname: data.hostname, domain: data.domain, enabled: data.enabled === "1" })),
+}));
+
+const opnsenseClient = require("../src/opnsenseClient");
 
 const providerProto = require("@pulumi/pulumi/proto/provider_pb");
 
@@ -107,5 +120,146 @@ describe("opnsenseUnboundHostOverride diff", () => {
     const { response } = await callHandler(opnsenseUnboundHostOverrideResource.diff, call);
 
     expect(response.getChanges()).toBe(providerProto.DiffResponse.DiffChanges.DIFF_NONE);
+  });
+});
+
+describe("opnsenseUnboundHostOverride create", () => {
+  beforeEach(() => { jest.clearAllMocks(); });
+
+  it("returns preview outputs without calling API", async () => {
+    const inputs = { domain: "example.com", server: "1.2.3.4" };
+    const call = makeCreateCall(inputs, true);
+    const { err, response } = await callHandler(opnsenseUnboundHostOverrideResource.create, call);
+
+    expect(err).toBeNull();
+    expect(response.getId()).toBe("preview");
+    expect(opnsenseClient.addHostOverride).not.toHaveBeenCalled();
+  });
+
+  it("creates host override via withUnboundReconfigure", async () => {
+    opnsenseClient.addHostOverride.mockResolvedValue({ uuid: "ho-uuid-1" });
+
+    const inputs = { domain: "example.com", server: "1.2.3.4" };
+    const call = makeCreateCall(inputs);
+    const { err, response } = await callHandler(opnsenseUnboundHostOverrideResource.create, call);
+
+    expect(err).toBeNull();
+    expect(response.getId()).toBe("ho-uuid-1");
+    expect(opnsenseClient.withUnboundReconfigure).toHaveBeenCalled();
+  });
+
+  it("returns error on API failure", async () => {
+    opnsenseClient.addHostOverride.mockRejectedValue(new Error("connection refused"));
+
+    const call = makeCreateCall({ domain: "example.com" });
+    const { err } = await callHandler(opnsenseUnboundHostOverrideResource.create, call);
+
+    expect(err).not.toBeNull();
+    expect(err.message).toContain("Failed to create host override");
+  });
+});
+
+describe("opnsenseUnboundHostOverride read", () => {
+  beforeEach(() => { jest.clearAllMocks(); });
+
+  it("reads host override and returns outputs", async () => {
+    opnsenseClient.getHostOverride.mockResolvedValue({ hostoverride: { hostname: "myhost", domain: "example.com", enabled: "1" } });
+
+    const call = makeReadCall("ho-uuid-1");
+    const { err, response } = await callHandler(opnsenseUnboundHostOverrideResource.read, call);
+
+    expect(err).toBeNull();
+    expect(response.getId()).toBe("ho-uuid-1");
+    const props = response.getProperties().toJavaScript();
+    expect(props.uuid).toBe("ho-uuid-1");
+  });
+
+  it("returns empty response on 404", async () => {
+    opnsenseClient.getHostOverride.mockRejectedValue(new Error("OPNsense API failed (404): not found"));
+
+    const call = makeReadCall("gone-uuid");
+    const { err, response } = await callHandler(opnsenseUnboundHostOverrideResource.read, call);
+
+    expect(err).toBeNull();
+    expect(response.getId()).toBeFalsy();
+  });
+
+  it("returns error on non-404 failure", async () => {
+    opnsenseClient.getHostOverride.mockRejectedValue(new Error("connection timeout"));
+
+    const call = makeReadCall("ho-uuid-1");
+    const { err } = await callHandler(opnsenseUnboundHostOverrideResource.read, call);
+
+    expect(err).not.toBeNull();
+    expect(err.message).toContain("Failed to read host override");
+  });
+});
+
+describe("opnsenseUnboundHostOverride update", () => {
+  beforeEach(() => { jest.clearAllMocks(); });
+
+  it("returns preview outputs without calling API", async () => {
+    const olds = { domain: "example.com", server: "1.2.3.4" };
+    const news = { domain: "example.com", server: "5.6.7.8" };
+    const call = makeUpdateCall("ho-uuid-1", olds, news, true);
+    const { err, response } = await callHandler(opnsenseUnboundHostOverrideResource.update, call);
+
+    expect(err).toBeNull();
+    expect(opnsenseClient.setHostOverride).not.toHaveBeenCalled();
+  });
+
+  it("updates host override via withUnboundReconfigure", async () => {
+    opnsenseClient.setHostOverride.mockResolvedValue(undefined);
+
+    const olds = { domain: "example.com", server: "1.2.3.4" };
+    const news = { domain: "example.com", server: "5.6.7.8" };
+    const call = makeUpdateCall("ho-uuid-1", olds, news);
+    const { err } = await callHandler(opnsenseUnboundHostOverrideResource.update, call);
+
+    expect(err).toBeNull();
+    expect(opnsenseClient.withUnboundReconfigure).toHaveBeenCalled();
+  });
+
+  it("returns error on API failure", async () => {
+    opnsenseClient.setHostOverride.mockRejectedValue(new Error("server error"));
+
+    const call = makeUpdateCall("ho-uuid-1", {}, { domain: "x.com" });
+    const { err } = await callHandler(opnsenseUnboundHostOverrideResource.update, call);
+
+    expect(err).not.toBeNull();
+    expect(err.message).toContain("Failed to update host override");
+  });
+});
+
+describe("opnsenseUnboundHostOverride delete", () => {
+  beforeEach(() => { jest.clearAllMocks(); });
+
+  it("deletes host override via withUnboundReconfigure", async () => {
+    opnsenseClient.delHostOverride.mockResolvedValue(undefined);
+
+    const call = makeDeleteCall("ho-uuid-1");
+    const { err } = await callHandler(opnsenseUnboundHostOverrideResource.delete, call);
+
+    expect(err).toBeNull();
+    expect(opnsenseClient.withUnboundReconfigure).toHaveBeenCalled();
+  });
+
+  it("ignores 404 on delete", async () => {
+    opnsenseClient.delHostOverride.mockRejectedValue(new Error("OPNsense API failed (404): not found"));
+
+    const call = makeDeleteCall("gone-uuid");
+    const { err } = await callHandler(opnsenseUnboundHostOverrideResource.delete, call);
+
+    expect(err).toBeNull();
+  });
+
+  it("returns error on non-404 failure", async () => {
+    opnsenseClient.delHostOverride.mockRejectedValue(new Error("connection refused"));
+
+    const call = makeDeleteCall("ho-uuid-1");
+    const { err } = await callHandler(opnsenseUnboundHostOverrideResource.delete, call);
+
+    expect(err).not.toBeNull();
+    expect(err.message).toContain("Failed to delete host override");
   });
 });

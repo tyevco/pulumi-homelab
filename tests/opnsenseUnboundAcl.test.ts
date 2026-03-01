@@ -1,5 +1,18 @@
-import { makeCheckCall, makeDiffCall, callHandler } from "./testUtils";
+import { makeCheckCall, makeDiffCall, makeCreateCall, makeReadCall, makeUpdateCall, makeDeleteCall, callHandler } from "./testUtils";
 import { opnsenseUnboundAclResource } from "../src/resources/opnsenseUnboundAcl";
+
+jest.mock("../src/opnsenseClient", () => ({
+  ensureOpnsenseConfigured: jest.fn(),
+  withUnboundReconfigure: jest.fn((fn: () => Promise<any>) => fn()),
+  addAcl: jest.fn(),
+  getAcl: jest.fn(),
+  setAcl: jest.fn(),
+  delAcl: jest.fn(),
+  aclToApi: jest.fn((inputs: any) => ({ name: inputs.name, networks: inputs.networks })),
+  aclFromApi: jest.fn((data: any) => ({ name: data.name, networks: data.networks, enabled: data.enabled === "1" })),
+}));
+
+const opnsenseClient = require("../src/opnsenseClient");
 
 const providerProto = require("@pulumi/pulumi/proto/provider_pb");
 
@@ -120,5 +133,138 @@ describe("opnsenseUnboundAcl diff", () => {
     const { response } = await callHandler(opnsenseUnboundAclResource.diff, call);
 
     expect(response.getChanges()).toBe(providerProto.DiffResponse.DiffChanges.DIFF_NONE);
+  });
+});
+
+describe("opnsenseUnboundAcl create", () => {
+  beforeEach(() => { jest.clearAllMocks(); });
+
+  it("returns preview outputs without calling API", async () => {
+    const call = makeCreateCall({ name: "lan-acl", networks: "10.0.0.0/8" }, true);
+    const { err, response } = await callHandler(opnsenseUnboundAclResource.create, call);
+
+    expect(err).toBeNull();
+    expect(response.getId()).toBe("preview");
+    expect(opnsenseClient.addAcl).not.toHaveBeenCalled();
+  });
+
+  it("creates ACL via withUnboundReconfigure", async () => {
+    opnsenseClient.addAcl.mockResolvedValue({ uuid: "acl-uuid-1" });
+
+    const call = makeCreateCall({ name: "lan-acl", networks: "10.0.0.0/8" });
+    const { err, response } = await callHandler(opnsenseUnboundAclResource.create, call);
+
+    expect(err).toBeNull();
+    expect(response.getId()).toBe("acl-uuid-1");
+    expect(opnsenseClient.withUnboundReconfigure).toHaveBeenCalled();
+  });
+
+  it("returns error on API failure", async () => {
+    opnsenseClient.addAcl.mockRejectedValue(new Error("connection refused"));
+
+    const call = makeCreateCall({ name: "lan-acl", networks: "10.0.0.0/8" });
+    const { err } = await callHandler(opnsenseUnboundAclResource.create, call);
+
+    expect(err).not.toBeNull();
+    expect(err.message).toContain("Failed to create ACL");
+  });
+});
+
+describe("opnsenseUnboundAcl read", () => {
+  beforeEach(() => { jest.clearAllMocks(); });
+
+  it("reads ACL and returns outputs", async () => {
+    opnsenseClient.getAcl.mockResolvedValue({ acl: { name: "lan-acl", networks: "10.0.0.0/8", enabled: "1" } });
+
+    const call = makeReadCall("acl-uuid-1");
+    const { err, response } = await callHandler(opnsenseUnboundAclResource.read, call);
+
+    expect(err).toBeNull();
+    expect(response.getId()).toBe("acl-uuid-1");
+  });
+
+  it("returns empty response on 404", async () => {
+    opnsenseClient.getAcl.mockRejectedValue(new Error("OPNsense API failed (404): not found"));
+
+    const call = makeReadCall("gone-uuid");
+    const { err, response } = await callHandler(opnsenseUnboundAclResource.read, call);
+
+    expect(err).toBeNull();
+    expect(response.getId()).toBeFalsy();
+  });
+
+  it("returns error on non-404 failure", async () => {
+    opnsenseClient.getAcl.mockRejectedValue(new Error("connection timeout"));
+
+    const call = makeReadCall("acl-uuid-1");
+    const { err } = await callHandler(opnsenseUnboundAclResource.read, call);
+
+    expect(err).not.toBeNull();
+    expect(err.message).toContain("Failed to read ACL");
+  });
+});
+
+describe("opnsenseUnboundAcl update", () => {
+  beforeEach(() => { jest.clearAllMocks(); });
+
+  it("returns preview outputs without calling API", async () => {
+    const call = makeUpdateCall("acl-uuid-1", { name: "lan-acl", networks: "10.0.0.0/8" }, { name: "lan-acl", networks: "192.168.0.0/16" }, true);
+    const { err } = await callHandler(opnsenseUnboundAclResource.update, call);
+
+    expect(err).toBeNull();
+    expect(opnsenseClient.setAcl).not.toHaveBeenCalled();
+  });
+
+  it("updates ACL via withUnboundReconfigure", async () => {
+    opnsenseClient.setAcl.mockResolvedValue(undefined);
+
+    const call = makeUpdateCall("acl-uuid-1", { name: "lan-acl", networks: "10.0.0.0/8" }, { name: "lan-acl", networks: "192.168.0.0/16" });
+    const { err } = await callHandler(opnsenseUnboundAclResource.update, call);
+
+    expect(err).toBeNull();
+    expect(opnsenseClient.withUnboundReconfigure).toHaveBeenCalled();
+  });
+
+  it("returns error on API failure", async () => {
+    opnsenseClient.setAcl.mockRejectedValue(new Error("server error"));
+
+    const call = makeUpdateCall("acl-uuid-1", {}, { name: "x", networks: "10.0.0.0/8" });
+    const { err } = await callHandler(opnsenseUnboundAclResource.update, call);
+
+    expect(err).not.toBeNull();
+    expect(err.message).toContain("Failed to update ACL");
+  });
+});
+
+describe("opnsenseUnboundAcl delete", () => {
+  beforeEach(() => { jest.clearAllMocks(); });
+
+  it("deletes ACL via withUnboundReconfigure", async () => {
+    opnsenseClient.delAcl.mockResolvedValue(undefined);
+
+    const call = makeDeleteCall("acl-uuid-1");
+    const { err } = await callHandler(opnsenseUnboundAclResource.delete, call);
+
+    expect(err).toBeNull();
+    expect(opnsenseClient.withUnboundReconfigure).toHaveBeenCalled();
+  });
+
+  it("ignores 404 on delete", async () => {
+    opnsenseClient.delAcl.mockRejectedValue(new Error("OPNsense API failed (404): not found"));
+
+    const call = makeDeleteCall("gone-uuid");
+    const { err } = await callHandler(opnsenseUnboundAclResource.delete, call);
+
+    expect(err).toBeNull();
+  });
+
+  it("returns error on non-404 failure", async () => {
+    opnsenseClient.delAcl.mockRejectedValue(new Error("connection refused"));
+
+    const call = makeDeleteCall("acl-uuid-1");
+    const { err } = await callHandler(opnsenseUnboundAclResource.delete, call);
+
+    expect(err).not.toBeNull();
+    expect(err.message).toContain("Failed to delete ACL");
   });
 });

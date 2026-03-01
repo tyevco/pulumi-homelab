@@ -1,5 +1,18 @@
-import { makeCheckCall, makeDiffCall, callHandler } from "./testUtils";
+import { makeCheckCall, makeDiffCall, makeCreateCall, makeReadCall, makeUpdateCall, makeDeleteCall, callHandler } from "./testUtils";
 import { opnsenseAliasResource } from "../src/resources/opnsenseAlias";
+
+jest.mock("../src/opnsenseClient", () => ({
+  ensureOpnsenseConfigured: jest.fn(),
+  withFirewallApply: jest.fn((fn: () => Promise<any>) => fn()),
+  addAlias: jest.fn(),
+  getAlias: jest.fn(),
+  setAlias: jest.fn(),
+  delAlias: jest.fn(),
+  aliasToApi: jest.fn((inputs: any) => ({ name: inputs.name, type: inputs.type })),
+  aliasFromApi: jest.fn((alias: any) => ({ name: alias.name, type: alias.type, enabled: alias.enabled === "1" })),
+}));
+
+const opnsenseClient = require("../src/opnsenseClient");
 
 const providerProto = require("@pulumi/pulumi/proto/provider_pb");
 
@@ -102,5 +115,166 @@ describe("opnsenseAlias diff", () => {
 
     expect(response.getChanges()).toBe(providerProto.DiffResponse.DiffChanges.DIFF_SOME);
     expect(response.getDiffsList()).toEqual(["enabled"]);
+  });
+});
+
+describe("opnsenseAlias create", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it("returns preview outputs without calling API", async () => {
+    const inputs = { name: "blocklist", type: "host" };
+    const call = makeCreateCall(inputs, true);
+    const { err, response } = await callHandler(opnsenseAliasResource.create, call);
+
+    expect(err).toBeNull();
+    expect(response.getId()).toBe("preview");
+    const props = response.getProperties().toJavaScript();
+    expect(props.uuid).toBe("");
+    expect(props.name).toBe("blocklist");
+    expect(opnsenseClient.addAlias).not.toHaveBeenCalled();
+  });
+
+  it("creates alias via withFirewallApply and returns uuid", async () => {
+    opnsenseClient.addAlias.mockResolvedValue({ uuid: "alias-uuid-1" });
+
+    const inputs = { name: "blocklist", type: "host", content: "10.0.0.1" };
+    const call = makeCreateCall(inputs);
+    const { err, response } = await callHandler(opnsenseAliasResource.create, call);
+
+    expect(err).toBeNull();
+    expect(response.getId()).toBe("alias-uuid-1");
+    expect(opnsenseClient.withFirewallApply).toHaveBeenCalled();
+    expect(opnsenseClient.aliasToApi).toHaveBeenCalledWith(inputs);
+  });
+
+  it("returns error on API failure", async () => {
+    opnsenseClient.addAlias.mockRejectedValue(new Error("OPNsense unreachable"));
+
+    const inputs = { name: "blocklist", type: "host" };
+    const call = makeCreateCall(inputs);
+    const { err } = await callHandler(opnsenseAliasResource.create, call);
+
+    expect(err).not.toBeNull();
+    expect(err.message).toContain("Failed to create alias");
+  });
+});
+
+describe("opnsenseAlias read", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it("reads alias and returns outputs with uuid", async () => {
+    opnsenseClient.getAlias.mockResolvedValue({ alias: { name: "blocklist", type: "host", enabled: "1" } });
+
+    const call = makeReadCall("alias-uuid-1");
+    const { err, response } = await callHandler(opnsenseAliasResource.read, call);
+
+    expect(err).toBeNull();
+    expect(response.getId()).toBe("alias-uuid-1");
+    const props = response.getProperties().toJavaScript();
+    expect(props.uuid).toBe("alias-uuid-1");
+    expect(props.name).toBe("blocklist");
+  });
+
+  it("returns empty response on 404", async () => {
+    opnsenseClient.getAlias.mockRejectedValue(new Error("OPNsense API failed (404): not found"));
+
+    const call = makeReadCall("gone-uuid");
+    const { err, response } = await callHandler(opnsenseAliasResource.read, call);
+
+    expect(err).toBeNull();
+    expect(response.getId()).toBeFalsy();
+  });
+
+  it("returns error on non-404 failure", async () => {
+    opnsenseClient.getAlias.mockRejectedValue(new Error("connection timeout"));
+
+    const call = makeReadCall("alias-uuid-1");
+    const { err } = await callHandler(opnsenseAliasResource.read, call);
+
+    expect(err).not.toBeNull();
+    expect(err.message).toContain("Failed to read alias");
+  });
+});
+
+describe("opnsenseAlias update", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it("returns preview outputs without calling API", async () => {
+    const olds = { name: "blocklist", type: "host" };
+    const news = { name: "blocklist", type: "network" };
+    const call = makeUpdateCall("alias-uuid-1", olds, news, true);
+    const { err, response } = await callHandler(opnsenseAliasResource.update, call);
+
+    expect(err).toBeNull();
+    const props = response.getProperties().toJavaScript();
+    expect(props.type).toBe("network");
+    expect(props.uuid).toBe("alias-uuid-1");
+    expect(opnsenseClient.setAlias).not.toHaveBeenCalled();
+  });
+
+  it("updates alias via withFirewallApply", async () => {
+    opnsenseClient.setAlias.mockResolvedValue(undefined);
+
+    const olds = { name: "blocklist", type: "host" };
+    const news = { name: "blocklist", type: "network" };
+    const call = makeUpdateCall("alias-uuid-1", olds, news);
+    const { err } = await callHandler(opnsenseAliasResource.update, call);
+
+    expect(err).toBeNull();
+    expect(opnsenseClient.withFirewallApply).toHaveBeenCalled();
+    expect(opnsenseClient.aliasToApi).toHaveBeenCalledWith(news);
+  });
+
+  it("returns error on API failure", async () => {
+    opnsenseClient.setAlias.mockRejectedValue(new Error("server error"));
+
+    const olds = { name: "blocklist", type: "host" };
+    const news = { name: "blocklist", type: "network" };
+    const call = makeUpdateCall("alias-uuid-1", olds, news);
+    const { err } = await callHandler(opnsenseAliasResource.update, call);
+
+    expect(err).not.toBeNull();
+    expect(err.message).toContain("Failed to update alias");
+  });
+});
+
+describe("opnsenseAlias delete", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it("deletes alias via withFirewallApply", async () => {
+    opnsenseClient.delAlias.mockResolvedValue(undefined);
+
+    const call = makeDeleteCall("alias-uuid-1");
+    const { err } = await callHandler(opnsenseAliasResource.delete, call);
+
+    expect(err).toBeNull();
+    expect(opnsenseClient.withFirewallApply).toHaveBeenCalled();
+  });
+
+  it("ignores 404 on delete", async () => {
+    opnsenseClient.delAlias.mockRejectedValue(new Error("OPNsense API failed (404): not found"));
+
+    const call = makeDeleteCall("gone-uuid");
+    const { err } = await callHandler(opnsenseAliasResource.delete, call);
+
+    expect(err).toBeNull();
+  });
+
+  it("returns error on non-404 failure", async () => {
+    opnsenseClient.delAlias.mockRejectedValue(new Error("connection refused"));
+
+    const call = makeDeleteCall("alias-uuid-1");
+    const { err } = await callHandler(opnsenseAliasResource.delete, call);
+
+    expect(err).not.toBeNull();
+    expect(err.message).toContain("Failed to delete alias");
   });
 });
