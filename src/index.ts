@@ -57,7 +57,7 @@ const providerImpl = {
     const opnsenseUrl = unwrapSecret(args["opnsenseUrl"] || args["homelab:config:opnsenseUrl"]) || "";
     const opnsenseApiKey = unwrapSecret(args["opnsenseApiKey"] || args["homelab:config:opnsenseApiKey"]) || "";
     const opnsenseApiSecret = unwrapSecret(args["opnsenseApiSecret"] || args["homelab:config:opnsenseApiSecret"]) || "";
-    const opnsenseInsecure = unwrapSecret(args["opnsenseInsecure"] || args["homelab:config:opnsenseInsecure"]) || false;
+    const opnsenseInsecure = unwrapSecret(args["opnsenseInsecure"] ?? args["homelab:config:opnsenseInsecure"]) ?? false;
 
     if (opnsenseUrl && opnsenseApiKey && opnsenseApiSecret) {
       configureOpnsenseClient({

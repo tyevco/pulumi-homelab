@@ -74,6 +74,42 @@ async function request<T>(method: string, path: string, body?: any): Promise<T> 
   return res.json();
 }
 
+// OPNsense getItem response normalization
+// getItem endpoints return {key: {value, selected}} objects for fields with
+// predefined choices, while searchItem returns flat strings. This normalizes
+// getItem responses so FromApi functions always see flat strings.
+
+function isSelectedMap(val: any): boolean {
+  if (!val || typeof val !== "object" || Array.isArray(val)) return false;
+  const entries = Object.values(val);
+  if (entries.length === 0) return false;
+  return entries.every((v: any) => v && typeof v === "object" && "selected" in v);
+}
+
+function extractSelected(val: Record<string, { value: string; selected: number }>): string {
+  return Object.entries(val)
+    .filter(([, v]) => v.selected === 1)
+    .map(([k]) => k)
+    .join("\n");
+}
+
+export function normalizeGetItemResponse<T extends Record<string, any>>(data: T): T {
+  const result = { ...data };
+  for (const [key, val] of Object.entries(result)) {
+    if (isSelectedMap(val)) {
+      (result as any)[key] = extractSelected(val);
+    }
+  }
+  return result;
+}
+
+// Safe integer parsing — returns undefined instead of NaN for empty/invalid strings
+function safeParseInt(val: string | undefined): number | undefined {
+  if (val === undefined || val === "") return undefined;
+  const parsed = parseInt(val, 10);
+  return isNaN(parsed) ? undefined : parsed;
+}
+
 // Boolean translation helpers
 function toBool(val: string | undefined): boolean {
   return val === "1";
@@ -152,8 +188,8 @@ export async function addFirewallRule(rule: FirewallRuleData): Promise<{ uuid: s
 }
 
 export async function getFirewallRule(uuid: string): Promise<{ rule: FirewallRuleData }> {
-  const res = await request<{ rule: FirewallRuleData }>("GET", `/api/firewall/filter/getRule/${uuid}`);
-  return res;
+  const res = await request<{ rule: any }>("GET", `/api/firewall/filter/getRule/${uuid}`);
+  return { ...res, rule: normalizeGetItemResponse(res.rule) };
 }
 
 export async function setFirewallRule(uuid: string, rule: FirewallRuleData): Promise<void> {
@@ -179,8 +215,8 @@ export async function addAlias(alias: AliasData): Promise<{ uuid: string }> {
 }
 
 export async function getAlias(uuid: string): Promise<{ alias: AliasData }> {
-  const res = await request<{ alias: AliasData }>("GET", `/api/firewall/alias/getItem/${uuid}`);
-  return res;
+  const res = await request<{ alias: any }>("GET", `/api/firewall/alias/getItem/${uuid}`);
+  return { ...res, alias: normalizeGetItemResponse(res.alias) };
 }
 
 export async function setAlias(uuid: string, alias: AliasData): Promise<void> {
@@ -219,8 +255,8 @@ export async function addHostOverride(hostoverride: HostOverrideData): Promise<{
 }
 
 export async function getHostOverride(uuid: string): Promise<{ hostoverride: HostOverrideData }> {
-  const res = await request<{ hostoverride: HostOverrideData }>("GET", `/api/unbound/settings/getHostOverride/${uuid}`);
-  return res;
+  const res = await request<{ hostoverride: any }>("GET", `/api/unbound/settings/getHostOverride/${uuid}`);
+  return { ...res, hostoverride: normalizeGetItemResponse(res.hostoverride) };
 }
 
 export async function setHostOverride(uuid: string, hostoverride: HostOverrideData): Promise<void> {
@@ -250,8 +286,8 @@ export async function addForward(forward: ForwardData): Promise<{ uuid: string }
 }
 
 export async function getForward(uuid: string): Promise<{ forward: ForwardData }> {
-  const res = await request<{ forward: ForwardData }>("GET", `/api/unbound/settings/getForward/${uuid}`);
-  return res;
+  const res = await request<{ forward: any }>("GET", `/api/unbound/settings/getForward/${uuid}`);
+  return { ...res, forward: normalizeGetItemResponse(res.forward) };
 }
 
 export async function setForward(uuid: string, forward: ForwardData): Promise<void> {
@@ -277,8 +313,8 @@ export async function addAcl(acl: AclData): Promise<{ uuid: string }> {
 }
 
 export async function getAcl(uuid: string): Promise<{ acl: AclData }> {
-  const res = await request<{ acl: AclData }>("GET", `/api/unbound/settings/getAcl/${uuid}`);
-  return res;
+  const res = await request<{ acl: any }>("GET", `/api/unbound/settings/getAcl/${uuid}`);
+  return { ...res, acl: normalizeGetItemResponse(res.acl) };
 }
 
 export async function setAcl(uuid: string, acl: AclData): Promise<void> {
@@ -310,8 +346,8 @@ export async function addDnsbl(dnsbl: DnsblData): Promise<{ uuid: string }> {
 }
 
 export async function getDnsbl(uuid: string): Promise<{ dnsbl: DnsblData }> {
-  const res = await request<{ dnsbl: DnsblData }>("GET", `/api/unbound/settings/getDnsbl/${uuid}`);
-  return res;
+  const res = await request<{ dnsbl: any }>("GET", `/api/unbound/settings/getDnsbl/${uuid}`);
+  return { ...res, dnsbl: normalizeGetItemResponse(res.dnsbl) };
 }
 
 export async function setDnsbl(uuid: string, dnsbl: DnsblData): Promise<void> {
@@ -357,7 +393,7 @@ export function ruleFromApi(rule: FirewallRuleData): Record<string, any> {
   if (rule.log !== undefined) result.log = toBool(rule.log);
   if (rule.quick !== undefined) result.quick = toBool(rule.quick);
   if (rule.disabled !== undefined) result.disabled = toBool(rule.disabled);
-  if (rule.sequence !== undefined) result.sequence = parseInt(rule.sequence, 10);
+  if (rule.sequence !== undefined) result.sequence = safeParseInt(rule.sequence);
   return result;
 }
 
@@ -405,10 +441,10 @@ export function hostOverrideFromApi(data: HostOverrideData): Record<string, any>
   if (data.domain !== undefined) result.domain = data.domain;
   if (data.rr !== undefined) result.rr = data.rr;
   if (data.server !== undefined) result.server = data.server;
-  if (data.mxprio !== undefined) result.mxprio = parseInt(data.mxprio, 10);
+  if (data.mxprio !== undefined) result.mxprio = safeParseInt(data.mxprio);
   if (data.mx !== undefined) result.mx = data.mx;
   if (data.txtdata !== undefined) result.txtdata = data.txtdata;
-  if (data.ttl !== undefined) result.ttl = parseInt(data.ttl, 10);
+  if (data.ttl !== undefined) result.ttl = safeParseInt(data.ttl);
   if (data.addptr !== undefined) result.addptr = toBool(data.addptr);
   if (data.description !== undefined) result.description = data.description;
   return result;
@@ -435,7 +471,7 @@ export function forwardFromApi(data: ForwardData): Record<string, any> {
   if (data.type !== undefined) result.type = data.type;
   if (data.domain !== undefined) result.domain = data.domain;
   if (data.server !== undefined) result.server = data.server;
-  if (data.port !== undefined) result.port = parseInt(data.port, 10);
+  if (data.port !== undefined) result.port = safeParseInt(data.port);
   if (data.verify !== undefined) result.verify = data.verify;
   if (data.forward_tcp_upstream !== undefined) result.forwardTcpUpstream = toBool(data.forward_tcp_upstream);
   if (data.forward_first !== undefined) result.forwardFirst = toBool(data.forward_first);
@@ -492,7 +528,7 @@ export function dnsblFromApi(data: DnsblData): Record<string, any> {
   if (data.source_nets !== undefined) result.sourceNets = data.source_nets;
   if (data.address !== undefined) result.address = data.address;
   if (data.nxdomain !== undefined) result.nxdomain = toBool(data.nxdomain);
-  if (data.cache_ttl !== undefined) result.cacheTtl = parseInt(data.cache_ttl, 10);
+  if (data.cache_ttl !== undefined) result.cacheTtl = safeParseInt(data.cache_ttl);
   if (data.description !== undefined) result.description = data.description;
   return result;
 }

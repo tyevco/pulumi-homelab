@@ -5,6 +5,7 @@ import {
   objectToStruct,
   makeCheckFailure,
   getResourceType,
+  valuesEqual,
 } from "../src/helpers";
 
 const structProto = require("google-protobuf/google/protobuf/struct_pb");
@@ -221,5 +222,58 @@ describe("getResourceType", () => {
   it("returns empty string when nothing available", () => {
     const call = { request: {} };
     expect(getResourceType(call)).toBe("");
+  });
+});
+
+describe("valuesEqual", () => {
+  it("treats undefined and undefined as equal", () => {
+    expect(valuesEqual(undefined, undefined)).toBe(true);
+  });
+
+  it("treats empty string and undefined as equal", () => {
+    expect(valuesEqual("", undefined)).toBe(true);
+    expect(valuesEqual(undefined, "")).toBe(true);
+  });
+
+  it("treats empty string and empty string as equal", () => {
+    expect(valuesEqual("", "")).toBe(true);
+  });
+
+  it("treats equal strings as equal", () => {
+    expect(valuesEqual("hello", "hello")).toBe(true);
+  });
+
+  it("treats different strings as not equal", () => {
+    expect(valuesEqual("hello", "world")).toBe(false);
+  });
+
+  it("treats equal numbers as equal", () => {
+    expect(valuesEqual(42, 42)).toBe(true);
+  });
+
+  it("treats different numbers as not equal", () => {
+    expect(valuesEqual(1, 2)).toBe(false);
+  });
+
+  it("treats equal booleans as equal", () => {
+    expect(valuesEqual(true, true)).toBe(true);
+    expect(valuesEqual(false, false)).toBe(true);
+  });
+
+  it("treats different booleans as not equal", () => {
+    expect(valuesEqual(true, false)).toBe(false);
+  });
+
+  it("treats non-empty string and undefined as not equal", () => {
+    expect(valuesEqual("hello", undefined)).toBe(false);
+    expect(valuesEqual(undefined, "hello")).toBe(false);
+  });
+
+  it("treats 0 and undefined as not equal", () => {
+    expect(valuesEqual(0, undefined)).toBe(false);
+  });
+
+  it("treats false and undefined as not equal", () => {
+    expect(valuesEqual(false, undefined)).toBe(false);
   });
 });

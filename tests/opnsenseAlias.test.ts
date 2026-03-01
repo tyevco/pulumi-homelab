@@ -9,7 +9,12 @@ jest.mock("../src/opnsenseClient", () => ({
   setAlias: jest.fn(),
   delAlias: jest.fn(),
   aliasToApi: jest.fn((inputs: any) => ({ name: inputs.name, type: inputs.type })),
-  aliasFromApi: jest.fn((alias: any) => ({ name: alias.name, type: alias.type, enabled: alias.enabled === "1" })),
+  aliasFromApi: jest.fn((alias: any) => {
+    const result: Record<string, any> = { name: alias.name, type: alias.type, enabled: alias.enabled === "1" };
+    if (alias.content !== undefined) result.content = alias.content;
+    if (alias.description !== undefined) result.description = alias.description;
+    return result;
+  }),
 }));
 
 const opnsenseClient = require("../src/opnsenseClient");
@@ -127,6 +132,26 @@ describe("opnsenseAlias diff", () => {
     expect(response.getChanges()).toBe(providerProto.DiffResponse.DiffChanges.DIFF_SOME);
     expect(response.getDiffsList()).toEqual(["enabled"]);
   });
+
+  it("treats missing and empty string as equivalent (no spurious diff)", async () => {
+    const olds = { name: "test", type: "host" };
+    const news = { name: "test", type: "host", content: "", description: "" };
+    const call = makeDiffCall(olds, news);
+    const { response } = await callHandler(opnsenseAliasResource.diff, call);
+
+    expect(response.getChanges()).toBe(providerProto.DiffResponse.DiffChanges.DIFF_NONE);
+    expect(response.getDiffsList().length).toBe(0);
+  });
+
+  it("detects change in multiline content", async () => {
+    const olds = { name: "test", type: "host", content: "10.0.0.1\n10.0.0.2" };
+    const news = { name: "test", type: "host", content: "10.0.0.1\n10.0.0.3" };
+    const call = makeDiffCall(olds, news);
+    const { response } = await callHandler(opnsenseAliasResource.diff, call);
+
+    expect(response.getChanges()).toBe(providerProto.DiffResponse.DiffChanges.DIFF_SOME);
+    expect(response.getDiffsList()).toEqual(["content"]);
+  });
 });
 
 describe("opnsenseAlias create", () => {
@@ -204,6 +229,23 @@ describe("opnsenseAlias read", () => {
     const props = response.getProperties().toJavaScript();
     expect(props.uuid).toBe("alias-uuid-1");
     expect(props.name).toBe("blocklist");
+  });
+
+  it("reads alias with getItem selected-map format", async () => {
+    // Simulate getItem response after normalizeGetItemResponse has run
+    opnsenseClient.getAlias.mockResolvedValue({
+      alias: { name: "NetBirdPorts", type: "port", enabled: "1", content: "33073\n10000", description: "" },
+    });
+
+    const call = makeReadCall("alias-uuid-2");
+    const { err, response } = await callHandler(opnsenseAliasResource.read, call);
+
+    expect(err).toBeNull();
+    const props = response.getProperties().toJavaScript();
+    expect(props.name).toBe("NetBirdPorts");
+    expect(props.type).toBe("port");
+    expect(props.enabled).toBe(true);
+    expect(props.content).toBe("33073\n10000");
   });
 
   it("returns empty response on 404", async () => {
