@@ -1640,4 +1640,30 @@ describe("request error handling edge cases", () => {
 
     await expect(client.addFirewallRule({})).rejects.toThrow("unauthorized");
   });
+
+  it("does not send Content-Type header on GET requests (prevents OPNsense 'Invalid JSON syntax')", async () => {
+    const client = setupConfiguredModule();
+    mockedFetch.mockResolvedValueOnce(mockResponse({
+      alias: { name: "test", type: "host", enabled: "1" },
+    }));
+
+    await client.getAlias("test-uuid");
+
+    const [, opts] = mockedFetch.mock.calls[0] as [string, any];
+    expect(opts.method).toBe("GET");
+    expect(opts.headers["Content-Type"]).toBeUndefined();
+    expect(opts.headers["Authorization"]).toBeDefined();
+  });
+
+  it("sends Content-Type header on POST requests with body", async () => {
+    const client = setupConfiguredModule();
+    mockedFetch.mockResolvedValueOnce(mockResponse({ uuid: "new-uuid" }));
+
+    await client.addFirewallRule({ action: "pass" });
+
+    const [, opts] = mockedFetch.mock.calls[0] as [string, any];
+    expect(opts.method).toBe("POST");
+    expect(opts.headers["Content-Type"]).toBe("application/json");
+    expect(opts.body).toBeDefined();
+  });
 });
