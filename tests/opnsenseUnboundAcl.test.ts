@@ -81,6 +81,17 @@ describe("opnsenseUnboundAcl check", () => {
     const inputs = response.getInputs().toJavaScript();
     expect(inputs.action).toBe("deny");
   });
+
+  it("rejects invalid action value", async () => {
+    const call = makeCheckCall({ name: "test", networks: "10.0.0.0/8", action: "drop" });
+    const { err, response } = await callHandler(opnsenseUnboundAclResource.check, call);
+
+    expect(err).toBeNull();
+    const failures = response.getFailuresList();
+    expect(failures.length).toBe(1);
+    expect(failures[0].getProperty()).toBe("action");
+    expect(failures[0].getReason()).toContain("must be one of");
+  });
 });
 
 describe("opnsenseUnboundAcl diff", () => {

@@ -29,10 +29,16 @@ export const opnsenseUnboundForwardResource = {
     }
 
     // Apply defaults
+    const VALID_TYPES = ["forward", "dot"];
     if (inputs.enabled === undefined) inputs.enabled = true;
     if (inputs.type === undefined) inputs.type = "forward";
     if (inputs.forwardTcpUpstream === undefined) inputs.forwardTcpUpstream = false;
     if (inputs.forwardFirst === undefined) inputs.forwardFirst = false;
+
+    // Validate enum fields
+    if (inputs.type && !VALID_TYPES.includes(inputs.type)) {
+      failures.push(makeCheckFailure("type", `type must be one of: ${VALID_TYPES.join(", ")}`));
+    }
 
     const response = new providerProto.CheckResponse();
     response.setInputs(objectToStruct(inputs));

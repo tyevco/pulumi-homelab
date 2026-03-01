@@ -88,6 +88,17 @@ describe("opnsenseAlias check", () => {
     expect(inputs.type).toBe("mac");
     expect(inputs.content).toBe("98:b7:85:1e:c2:1e");
   });
+
+  it("rejects invalid alias type", async () => {
+    const call = makeCheckCall({ name: "test", type: "foobar" });
+    const { err, response } = await callHandler(opnsenseAliasResource.check, call);
+
+    expect(err).toBeNull();
+    const failures = response.getFailuresList();
+    expect(failures.length).toBe(1);
+    expect(failures[0].getProperty()).toBe("type");
+    expect(failures[0].getReason()).toContain("must be one of");
+  });
 });
 
 describe("opnsenseAlias diff", () => {

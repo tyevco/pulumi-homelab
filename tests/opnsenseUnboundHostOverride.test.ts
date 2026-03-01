@@ -68,6 +68,17 @@ describe("opnsenseUnboundHostOverride check", () => {
     const inputs = response.getInputs().toJavaScript();
     expect(inputs.addptr).toBe(false);
   });
+
+  it("rejects invalid rr value", async () => {
+    const call = makeCheckCall({ domain: "example.com", rr: "CNAME" });
+    const { err, response } = await callHandler(opnsenseUnboundHostOverrideResource.check, call);
+
+    expect(err).toBeNull();
+    const failures = response.getFailuresList();
+    expect(failures.length).toBe(1);
+    expect(failures[0].getProperty()).toBe("rr");
+    expect(failures[0].getReason()).toContain("must be one of");
+  });
 });
 
 describe("opnsenseUnboundHostOverride diff", () => {

@@ -24,8 +24,11 @@ export const opnsenseAliasResource = {
     if (!inputs.name) {
       failures.push(makeCheckFailure("name", "name is required"));
     }
+    const VALID_TYPES = ["host", "network", "port", "mac", "url", "urltable"];
     if (!inputs.type) {
       failures.push(makeCheckFailure("type", "type is required (host, network, port, mac, url, or urltable)"));
+    } else if (!VALID_TYPES.includes(inputs.type)) {
+      failures.push(makeCheckFailure("type", `type must be one of: ${VALID_TYPES.join(", ")}`));
     }
 
     // Apply defaults

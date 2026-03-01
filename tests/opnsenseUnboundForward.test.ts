@@ -69,6 +69,17 @@ describe("opnsenseUnboundForward check", () => {
     const inputs = response.getInputs().toJavaScript();
     expect(inputs.forwardFirst).toBe(true);
   });
+
+  it("rejects invalid type value", async () => {
+    const call = makeCheckCall({ server: "8.8.8.8", type: "recursive" });
+    const { err, response } = await callHandler(opnsenseUnboundForwardResource.check, call);
+
+    expect(err).toBeNull();
+    const failures = response.getFailuresList();
+    expect(failures.length).toBe(1);
+    expect(failures[0].getProperty()).toBe("type");
+    expect(failures[0].getReason()).toContain("must be one of");
+  });
 });
 
 describe("opnsenseUnboundForward diff", () => {
