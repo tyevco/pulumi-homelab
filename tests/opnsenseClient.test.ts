@@ -1292,6 +1292,32 @@ describe("translation edge cases", () => {
   it("aliasFromApi returns empty object for empty input", () => {
     expect(aliasFromApi({})).toEqual({});
   });
+
+  it("ruleFromApi returns undefined sequence for empty string", () => {
+    const result = ruleFromApi({ sequence: "" });
+    expect(result.sequence).toBeUndefined();
+  });
+
+  it("ruleFromApi returns undefined sequence for non-numeric string", () => {
+    const result = ruleFromApi({ sequence: "abc" });
+    expect(result.sequence).toBeUndefined();
+  });
+
+  it("hostOverrideFromApi returns undefined for empty mxprio/ttl", () => {
+    const result = hostOverrideFromApi({ mxprio: "", ttl: "" });
+    expect(result.mxprio).toBeUndefined();
+    expect(result.ttl).toBeUndefined();
+  });
+
+  it("forwardFromApi returns undefined for empty port", () => {
+    const result = forwardFromApi({ port: "" });
+    expect(result.port).toBeUndefined();
+  });
+
+  it("dnsblFromApi returns undefined for empty cache_ttl", () => {
+    const result = dnsblFromApi({ cache_ttl: "" });
+    expect(result.cacheTtl).toBeUndefined();
+  });
 });
 
 describe("request error handling edge cases", () => {

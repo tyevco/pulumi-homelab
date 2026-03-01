@@ -103,6 +103,13 @@ export function normalizeGetItemResponse<T extends Record<string, any>>(data: T)
   return result;
 }
 
+// Safe integer parsing — returns undefined instead of NaN for empty/invalid strings
+function safeParseInt(val: string | undefined): number | undefined {
+  if (val === undefined || val === "") return undefined;
+  const parsed = parseInt(val, 10);
+  return isNaN(parsed) ? undefined : parsed;
+}
+
 // Boolean translation helpers
 function toBool(val: string | undefined): boolean {
   return val === "1";
@@ -386,7 +393,7 @@ export function ruleFromApi(rule: FirewallRuleData): Record<string, any> {
   if (rule.log !== undefined) result.log = toBool(rule.log);
   if (rule.quick !== undefined) result.quick = toBool(rule.quick);
   if (rule.disabled !== undefined) result.disabled = toBool(rule.disabled);
-  if (rule.sequence !== undefined) result.sequence = parseInt(rule.sequence, 10);
+  if (rule.sequence !== undefined) result.sequence = safeParseInt(rule.sequence);
   return result;
 }
 
@@ -434,10 +441,10 @@ export function hostOverrideFromApi(data: HostOverrideData): Record<string, any>
   if (data.domain !== undefined) result.domain = data.domain;
   if (data.rr !== undefined) result.rr = data.rr;
   if (data.server !== undefined) result.server = data.server;
-  if (data.mxprio !== undefined) result.mxprio = parseInt(data.mxprio, 10);
+  if (data.mxprio !== undefined) result.mxprio = safeParseInt(data.mxprio);
   if (data.mx !== undefined) result.mx = data.mx;
   if (data.txtdata !== undefined) result.txtdata = data.txtdata;
-  if (data.ttl !== undefined) result.ttl = parseInt(data.ttl, 10);
+  if (data.ttl !== undefined) result.ttl = safeParseInt(data.ttl);
   if (data.addptr !== undefined) result.addptr = toBool(data.addptr);
   if (data.description !== undefined) result.description = data.description;
   return result;
@@ -464,7 +471,7 @@ export function forwardFromApi(data: ForwardData): Record<string, any> {
   if (data.type !== undefined) result.type = data.type;
   if (data.domain !== undefined) result.domain = data.domain;
   if (data.server !== undefined) result.server = data.server;
-  if (data.port !== undefined) result.port = parseInt(data.port, 10);
+  if (data.port !== undefined) result.port = safeParseInt(data.port);
   if (data.verify !== undefined) result.verify = data.verify;
   if (data.forward_tcp_upstream !== undefined) result.forwardTcpUpstream = toBool(data.forward_tcp_upstream);
   if (data.forward_first !== undefined) result.forwardFirst = toBool(data.forward_first);
@@ -521,7 +528,7 @@ export function dnsblFromApi(data: DnsblData): Record<string, any> {
   if (data.source_nets !== undefined) result.sourceNets = data.source_nets;
   if (data.address !== undefined) result.address = data.address;
   if (data.nxdomain !== undefined) result.nxdomain = toBool(data.nxdomain);
-  if (data.cache_ttl !== undefined) result.cacheTtl = parseInt(data.cache_ttl, 10);
+  if (data.cache_ttl !== undefined) result.cacheTtl = safeParseInt(data.cache_ttl);
   if (data.description !== undefined) result.description = data.description;
   return result;
 }
