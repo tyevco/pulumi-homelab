@@ -1,5 +1,16 @@
-import { makeCheckCall, makeDiffCall, callHandler } from "./testUtils";
+import { makeCheckCall, makeDiffCall, makeCreateCall, makeReadCall, makeUpdateCall, makeDeleteCall, callHandler } from "./testUtils";
 import { lxcContainerResource } from "../src/resources/lxcContainer";
+
+jest.mock("../src/homelabClient", () => ({
+  ensureConfigured: jest.fn(),
+  createLxcContainer: jest.fn(),
+  getLxcContainer: jest.fn(),
+  saveLxcConfig: jest.fn(),
+  startLxcContainer: jest.fn(),
+  deleteLxcContainer: jest.fn(),
+}));
+
+const homelabClient = require("../src/homelabClient");
 
 const providerProto = require("@pulumi/pulumi/proto/provider_pb");
 
@@ -187,5 +198,213 @@ describe("lxcContainer diff", () => {
     const { response } = await callHandler(lxcContainerResource.diff, call);
 
     expect(response.getChanges()).toBe(providerProto.DiffResponse.DiffChanges.DIFF_NONE);
+  });
+});
+
+describe("lxcContainer create", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it("returns preview outputs without calling API", async () => {
+    const inputs = { name: "test", dist: "ubuntu", release: "jammy", arch: "amd64" };
+    const call = makeCreateCall(inputs, true);
+    const { err, response } = await callHandler(lxcContainerResource.create, call);
+
+    expect(err).toBeNull();
+    expect(response.getId()).toBe("test");
+    const props = response.getProperties().toJavaScript();
+    expect(props.name).toBe("test");
+    expect(props.status).toBe(0);
+    expect(props.ip).toBe("");
+    expect(homelabClient.createLxcContainer).not.toHaveBeenCalled();
+  });
+
+  it("creates container, starts it, and returns outputs", async () => {
+    const containerInfo = { name: "myct", status: 3, ip: "10.0.0.5", autostart: false, pid: 123, memory: "512MB", config: "" };
+    homelabClient.createLxcContainer.mockResolvedValue(containerInfo);
+    homelabClient.startLxcContainer.mockResolvedValue(containerInfo);
+
+    const inputs = { name: "myct", dist: "ubuntu", release: "jammy", arch: "amd64" };
+    const call = makeCreateCall(inputs);
+    const { err, response } = await callHandler(lxcContainerResource.create, call);
+
+    expect(err).toBeNull();
+    expect(response.getId()).toBe("myct");
+    expect(homelabClient.createLxcContainer).toHaveBeenCalledWith("myct", "ubuntu", "jammy", "amd64");
+    expect(homelabClient.startLxcContainer).toHaveBeenCalledWith("myct");
+    expect(homelabClient.saveLxcConfig).not.toHaveBeenCalled();
+  });
+
+  it("saves config before starting when config is provided", async () => {
+    const containerInfo = { name: "myct", status: 3, ip: "10.0.0.5", autostart: false, pid: 123, memory: "512MB", config: "lxc.net.0.type = veth" };
+    homelabClient.createLxcContainer.mockResolvedValue(containerInfo);
+    homelabClient.saveLxcConfig.mockResolvedValue(containerInfo);
+    homelabClient.startLxcContainer.mockResolvedValue(containerInfo);
+
+    const inputs = { name: "myct", dist: "ubuntu", release: "jammy", arch: "amd64", config: "lxc.net.0.type = veth" };
+    const call = makeCreateCall(inputs);
+    const { err, response } = await callHandler(lxcContainerResource.create, call);
+
+    expect(err).toBeNull();
+    expect(homelabClient.saveLxcConfig).toHaveBeenCalledWith("myct", "lxc.net.0.type = veth");
+
+    // Verify order: create → config → start
+    const createOrder = homelabClient.createLxcContainer.mock.invocationCallOrder[0];
+    const configOrder = homelabClient.saveLxcConfig.mock.invocationCallOrder[0];
+    const startOrder = homelabClient.startLxcContainer.mock.invocationCallOrder[0];
+    expect(createOrder).toBeLessThan(configOrder);
+    expect(configOrder).toBeLessThan(startOrder);
+  });
+
+  it("returns error on API failure", async () => {
+    homelabClient.createLxcContainer.mockRejectedValue(new Error("connection refused"));
+
+    const inputs = { name: "myct", dist: "ubuntu", release: "jammy", arch: "amd64" };
+    const call = makeCreateCall(inputs);
+    const { err } = await callHandler(lxcContainerResource.create, call);
+
+    expect(err).not.toBeNull();
+    expect(err.message).toContain("Failed to create LXC container");
+    expect(err.message).toContain("connection refused");
+  });
+});
+
+describe("lxcContainer read", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it("reads container and returns outputs", async () => {
+    const containerInfo = { name: "myct", status: 3, ip: "10.0.0.5", autostart: true, pid: 456, memory: "256MB", config: "lxc.net.0.type = veth" };
+    homelabClient.getLxcContainer.mockResolvedValue(containerInfo);
+
+    const call = makeReadCall("myct", { name: "myct", dist: "ubuntu", release: "jammy", arch: "amd64" });
+    const { err, response } = await callHandler(lxcContainerResource.read, call);
+
+    expect(err).toBeNull();
+    expect(response.getId()).toBe("myct");
+    const props = response.getProperties().toJavaScript();
+    expect(props.name).toBe("myct");
+    expect(props.status).toBe(3);
+    expect(props.ip).toBe("10.0.0.5");
+    expect(props.dist).toBe("ubuntu");
+    expect(props.release).toBe("jammy");
+    expect(props.arch).toBe("amd64");
+  });
+
+  it("returns empty response on 404 (triggers recreation)", async () => {
+    homelabClient.getLxcContainer.mockRejectedValue(new Error("Homelab API GET /api/lxc/gone failed (404): not found"));
+
+    const call = makeReadCall("gone", { name: "gone", dist: "ubuntu", release: "jammy", arch: "amd64" });
+    const { err, response } = await callHandler(lxcContainerResource.read, call);
+
+    expect(err).toBeNull();
+    // Empty response (no id set) signals resource was deleted externally
+    expect(response.getId()).toBeFalsy();
+  });
+
+  it("returns error on non-404 API failure", async () => {
+    homelabClient.getLxcContainer.mockRejectedValue(new Error("connection timeout"));
+
+    const call = makeReadCall("myct", { name: "myct", dist: "ubuntu", release: "jammy", arch: "amd64" });
+    const { err } = await callHandler(lxcContainerResource.read, call);
+
+    expect(err).not.toBeNull();
+    expect(err.message).toContain("Failed to read LXC container");
+  });
+});
+
+describe("lxcContainer update", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it("returns preview outputs without calling API", async () => {
+    const olds = { name: "myct", dist: "ubuntu", release: "jammy", arch: "amd64", config: "old", status: 3, ip: "10.0.0.5", pid: 123, memory: "512MB" };
+    const news = { name: "myct", dist: "ubuntu", release: "jammy", arch: "amd64", config: "new" };
+    const call = makeUpdateCall("myct", olds, news, true);
+    const { err, response } = await callHandler(lxcContainerResource.update, call);
+
+    expect(err).toBeNull();
+    const props = response.getProperties().toJavaScript();
+    expect(props.config).toBe("new");
+    expect(props.status).toBe(3);
+    expect(homelabClient.saveLxcConfig).not.toHaveBeenCalled();
+  });
+
+  it("calls saveLxcConfig when config changed", async () => {
+    const containerInfo = { name: "myct", status: 3, ip: "10.0.0.5", autostart: false, pid: 123, memory: "512MB", config: "new-config" };
+    homelabClient.saveLxcConfig.mockResolvedValue(containerInfo);
+    homelabClient.getLxcContainer.mockResolvedValue(containerInfo);
+
+    const olds = { name: "myct", dist: "ubuntu", release: "jammy", arch: "amd64", config: "old-config" };
+    const news = { name: "myct", dist: "ubuntu", release: "jammy", arch: "amd64", config: "new-config" };
+    const call = makeUpdateCall("myct", olds, news);
+    const { err, response } = await callHandler(lxcContainerResource.update, call);
+
+    expect(err).toBeNull();
+    expect(homelabClient.saveLxcConfig).toHaveBeenCalledWith("myct", "new-config");
+    expect(homelabClient.getLxcContainer).toHaveBeenCalledWith("myct");
+  });
+
+  it("skips saveLxcConfig when config unchanged", async () => {
+    const containerInfo = { name: "myct", status: 3, ip: "10.0.0.5", autostart: false, pid: 123, memory: "512MB", config: "same" };
+    homelabClient.getLxcContainer.mockResolvedValue(containerInfo);
+
+    const olds = { name: "myct", dist: "ubuntu", release: "jammy", arch: "amd64", config: "same" };
+    const news = { name: "myct", dist: "ubuntu", release: "jammy", arch: "amd64", config: "same" };
+    const call = makeUpdateCall("myct", olds, news);
+    const { err } = await callHandler(lxcContainerResource.update, call);
+
+    expect(err).toBeNull();
+    expect(homelabClient.saveLxcConfig).not.toHaveBeenCalled();
+  });
+
+  it("returns error on API failure", async () => {
+    homelabClient.saveLxcConfig.mockRejectedValue(new Error("server error"));
+
+    const olds = { name: "myct", dist: "ubuntu", release: "jammy", arch: "amd64", config: "old" };
+    const news = { name: "myct", dist: "ubuntu", release: "jammy", arch: "amd64", config: "new" };
+    const call = makeUpdateCall("myct", olds, news);
+    const { err } = await callHandler(lxcContainerResource.update, call);
+
+    expect(err).not.toBeNull();
+    expect(err.message).toContain("Failed to update LXC container");
+  });
+});
+
+describe("lxcContainer delete", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it("deletes container successfully", async () => {
+    homelabClient.deleteLxcContainer.mockResolvedValue(undefined);
+
+    const call = makeDeleteCall("myct");
+    const { err } = await callHandler(lxcContainerResource.delete, call);
+
+    expect(err).toBeNull();
+    expect(homelabClient.deleteLxcContainer).toHaveBeenCalledWith("myct");
+  });
+
+  it("ignores 404 on delete (already gone)", async () => {
+    homelabClient.deleteLxcContainer.mockRejectedValue(new Error("Homelab API DELETE failed (404): not found"));
+
+    const call = makeDeleteCall("gone");
+    const { err } = await callHandler(lxcContainerResource.delete, call);
+
+    expect(err).toBeNull();
+  });
+
+  it("returns error on non-404 failure", async () => {
+    homelabClient.deleteLxcContainer.mockRejectedValue(new Error("connection refused"));
+
+    const call = makeDeleteCall("myct");
+    const { err } = await callHandler(lxcContainerResource.delete, call);
+
+    expect(err).not.toBeNull();
+    expect(err.message).toContain("Failed to delete LXC container");
   });
 });

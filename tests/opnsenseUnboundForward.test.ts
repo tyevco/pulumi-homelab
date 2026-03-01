@@ -1,5 +1,18 @@
-import { makeCheckCall, makeDiffCall, callHandler } from "./testUtils";
+import { makeCheckCall, makeDiffCall, makeCreateCall, makeReadCall, makeUpdateCall, makeDeleteCall, callHandler } from "./testUtils";
 import { opnsenseUnboundForwardResource } from "../src/resources/opnsenseUnboundForward";
+
+jest.mock("../src/opnsenseClient", () => ({
+  ensureOpnsenseConfigured: jest.fn(),
+  withUnboundReconfigure: jest.fn((fn: () => Promise<any>) => fn()),
+  addForward: jest.fn(),
+  getForward: jest.fn(),
+  setForward: jest.fn(),
+  delForward: jest.fn(),
+  forwardToApi: jest.fn((inputs: any) => ({ server: inputs.server })),
+  forwardFromApi: jest.fn((data: any) => ({ server: data.server, enabled: data.enabled === "1" })),
+}));
+
+const opnsenseClient = require("../src/opnsenseClient");
 
 const providerProto = require("@pulumi/pulumi/proto/provider_pb");
 
@@ -108,5 +121,138 @@ describe("opnsenseUnboundForward diff", () => {
     const { response } = await callHandler(opnsenseUnboundForwardResource.diff, call);
 
     expect(response.getChanges()).toBe(providerProto.DiffResponse.DiffChanges.DIFF_NONE);
+  });
+});
+
+describe("opnsenseUnboundForward create", () => {
+  beforeEach(() => { jest.clearAllMocks(); });
+
+  it("returns preview outputs without calling API", async () => {
+    const call = makeCreateCall({ server: "8.8.8.8" }, true);
+    const { err, response } = await callHandler(opnsenseUnboundForwardResource.create, call);
+
+    expect(err).toBeNull();
+    expect(response.getId()).toBe("preview");
+    expect(opnsenseClient.addForward).not.toHaveBeenCalled();
+  });
+
+  it("creates forward via withUnboundReconfigure", async () => {
+    opnsenseClient.addForward.mockResolvedValue({ uuid: "fwd-uuid-1" });
+
+    const call = makeCreateCall({ server: "8.8.8.8" });
+    const { err, response } = await callHandler(opnsenseUnboundForwardResource.create, call);
+
+    expect(err).toBeNull();
+    expect(response.getId()).toBe("fwd-uuid-1");
+    expect(opnsenseClient.withUnboundReconfigure).toHaveBeenCalled();
+  });
+
+  it("returns error on API failure", async () => {
+    opnsenseClient.addForward.mockRejectedValue(new Error("connection refused"));
+
+    const call = makeCreateCall({ server: "8.8.8.8" });
+    const { err } = await callHandler(opnsenseUnboundForwardResource.create, call);
+
+    expect(err).not.toBeNull();
+    expect(err.message).toContain("Failed to create forward");
+  });
+});
+
+describe("opnsenseUnboundForward read", () => {
+  beforeEach(() => { jest.clearAllMocks(); });
+
+  it("reads forward and returns outputs", async () => {
+    opnsenseClient.getForward.mockResolvedValue({ forward: { server: "8.8.8.8", enabled: "1" } });
+
+    const call = makeReadCall("fwd-uuid-1");
+    const { err, response } = await callHandler(opnsenseUnboundForwardResource.read, call);
+
+    expect(err).toBeNull();
+    expect(response.getId()).toBe("fwd-uuid-1");
+  });
+
+  it("returns empty response on 404", async () => {
+    opnsenseClient.getForward.mockRejectedValue(new Error("OPNsense API failed (404): not found"));
+
+    const call = makeReadCall("gone-uuid");
+    const { err, response } = await callHandler(opnsenseUnboundForwardResource.read, call);
+
+    expect(err).toBeNull();
+    expect(response.getId()).toBeFalsy();
+  });
+
+  it("returns error on non-404 failure", async () => {
+    opnsenseClient.getForward.mockRejectedValue(new Error("connection timeout"));
+
+    const call = makeReadCall("fwd-uuid-1");
+    const { err } = await callHandler(opnsenseUnboundForwardResource.read, call);
+
+    expect(err).not.toBeNull();
+    expect(err.message).toContain("Failed to read forward");
+  });
+});
+
+describe("opnsenseUnboundForward update", () => {
+  beforeEach(() => { jest.clearAllMocks(); });
+
+  it("returns preview outputs without calling API", async () => {
+    const call = makeUpdateCall("fwd-uuid-1", { server: "8.8.8.8" }, { server: "1.1.1.1" }, true);
+    const { err } = await callHandler(opnsenseUnboundForwardResource.update, call);
+
+    expect(err).toBeNull();
+    expect(opnsenseClient.setForward).not.toHaveBeenCalled();
+  });
+
+  it("updates forward via withUnboundReconfigure", async () => {
+    opnsenseClient.setForward.mockResolvedValue(undefined);
+
+    const call = makeUpdateCall("fwd-uuid-1", { server: "8.8.8.8" }, { server: "1.1.1.1" });
+    const { err } = await callHandler(opnsenseUnboundForwardResource.update, call);
+
+    expect(err).toBeNull();
+    expect(opnsenseClient.withUnboundReconfigure).toHaveBeenCalled();
+  });
+
+  it("returns error on API failure", async () => {
+    opnsenseClient.setForward.mockRejectedValue(new Error("server error"));
+
+    const call = makeUpdateCall("fwd-uuid-1", {}, { server: "1.1.1.1" });
+    const { err } = await callHandler(opnsenseUnboundForwardResource.update, call);
+
+    expect(err).not.toBeNull();
+    expect(err.message).toContain("Failed to update forward");
+  });
+});
+
+describe("opnsenseUnboundForward delete", () => {
+  beforeEach(() => { jest.clearAllMocks(); });
+
+  it("deletes forward via withUnboundReconfigure", async () => {
+    opnsenseClient.delForward.mockResolvedValue(undefined);
+
+    const call = makeDeleteCall("fwd-uuid-1");
+    const { err } = await callHandler(opnsenseUnboundForwardResource.delete, call);
+
+    expect(err).toBeNull();
+    expect(opnsenseClient.withUnboundReconfigure).toHaveBeenCalled();
+  });
+
+  it("ignores 404 on delete", async () => {
+    opnsenseClient.delForward.mockRejectedValue(new Error("OPNsense API failed (404): not found"));
+
+    const call = makeDeleteCall("gone-uuid");
+    const { err } = await callHandler(opnsenseUnboundForwardResource.delete, call);
+
+    expect(err).toBeNull();
+  });
+
+  it("returns error on non-404 failure", async () => {
+    opnsenseClient.delForward.mockRejectedValue(new Error("connection refused"));
+
+    const call = makeDeleteCall("fwd-uuid-1");
+    const { err } = await callHandler(opnsenseUnboundForwardResource.delete, call);
+
+    expect(err).not.toBeNull();
+    expect(err.message).toContain("Failed to delete forward");
   });
 });

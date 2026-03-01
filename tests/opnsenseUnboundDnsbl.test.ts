@@ -1,5 +1,18 @@
-import { makeCheckCall, makeDiffCall, callHandler } from "./testUtils";
+import { makeCheckCall, makeDiffCall, makeCreateCall, makeReadCall, makeUpdateCall, makeDeleteCall, callHandler } from "./testUtils";
 import { opnsenseUnboundDnsblResource } from "../src/resources/opnsenseUnboundDnsbl";
+
+jest.mock("../src/opnsenseClient", () => ({
+  ensureOpnsenseConfigured: jest.fn(),
+  withUnboundReconfigure: jest.fn((fn: () => Promise<any>) => fn()),
+  addDnsbl: jest.fn(),
+  getDnsbl: jest.fn(),
+  setDnsbl: jest.fn(),
+  delDnsbl: jest.fn(),
+  dnsblToApi: jest.fn((inputs: any) => ({ description: inputs.description })),
+  dnsblFromApi: jest.fn((data: any) => ({ description: data.description, enabled: data.enabled === "1" })),
+}));
+
+const opnsenseClient = require("../src/opnsenseClient");
 
 const providerProto = require("@pulumi/pulumi/proto/provider_pb");
 
@@ -108,5 +121,138 @@ describe("opnsenseUnboundDnsbl diff", () => {
     const { response } = await callHandler(opnsenseUnboundDnsblResource.diff, call);
 
     expect(response.getChanges()).toBe(providerProto.DiffResponse.DiffChanges.DIFF_NONE);
+  });
+});
+
+describe("opnsenseUnboundDnsbl create", () => {
+  beforeEach(() => { jest.clearAllMocks(); });
+
+  it("returns preview outputs without calling API", async () => {
+    const call = makeCreateCall({ description: "My blocklist" }, true);
+    const { err, response } = await callHandler(opnsenseUnboundDnsblResource.create, call);
+
+    expect(err).toBeNull();
+    expect(response.getId()).toBe("preview");
+    expect(opnsenseClient.addDnsbl).not.toHaveBeenCalled();
+  });
+
+  it("creates DNSBL via withUnboundReconfigure", async () => {
+    opnsenseClient.addDnsbl.mockResolvedValue({ uuid: "dnsbl-uuid-1" });
+
+    const call = makeCreateCall({ description: "My blocklist" });
+    const { err, response } = await callHandler(opnsenseUnboundDnsblResource.create, call);
+
+    expect(err).toBeNull();
+    expect(response.getId()).toBe("dnsbl-uuid-1");
+    expect(opnsenseClient.withUnboundReconfigure).toHaveBeenCalled();
+  });
+
+  it("returns error on API failure", async () => {
+    opnsenseClient.addDnsbl.mockRejectedValue(new Error("connection refused"));
+
+    const call = makeCreateCall({ description: "My blocklist" });
+    const { err } = await callHandler(opnsenseUnboundDnsblResource.create, call);
+
+    expect(err).not.toBeNull();
+    expect(err.message).toContain("Failed to create DNSBL");
+  });
+});
+
+describe("opnsenseUnboundDnsbl read", () => {
+  beforeEach(() => { jest.clearAllMocks(); });
+
+  it("reads DNSBL and returns outputs", async () => {
+    opnsenseClient.getDnsbl.mockResolvedValue({ dnsbl: { description: "My blocklist", enabled: "1" } });
+
+    const call = makeReadCall("dnsbl-uuid-1");
+    const { err, response } = await callHandler(opnsenseUnboundDnsblResource.read, call);
+
+    expect(err).toBeNull();
+    expect(response.getId()).toBe("dnsbl-uuid-1");
+  });
+
+  it("returns empty response on 404", async () => {
+    opnsenseClient.getDnsbl.mockRejectedValue(new Error("OPNsense API failed (404): not found"));
+
+    const call = makeReadCall("gone-uuid");
+    const { err, response } = await callHandler(opnsenseUnboundDnsblResource.read, call);
+
+    expect(err).toBeNull();
+    expect(response.getId()).toBeFalsy();
+  });
+
+  it("returns error on non-404 failure", async () => {
+    opnsenseClient.getDnsbl.mockRejectedValue(new Error("connection timeout"));
+
+    const call = makeReadCall("dnsbl-uuid-1");
+    const { err } = await callHandler(opnsenseUnboundDnsblResource.read, call);
+
+    expect(err).not.toBeNull();
+    expect(err.message).toContain("Failed to read DNSBL");
+  });
+});
+
+describe("opnsenseUnboundDnsbl update", () => {
+  beforeEach(() => { jest.clearAllMocks(); });
+
+  it("returns preview outputs without calling API", async () => {
+    const call = makeUpdateCall("dnsbl-uuid-1", { description: "old" }, { description: "new" }, true);
+    const { err } = await callHandler(opnsenseUnboundDnsblResource.update, call);
+
+    expect(err).toBeNull();
+    expect(opnsenseClient.setDnsbl).not.toHaveBeenCalled();
+  });
+
+  it("updates DNSBL via withUnboundReconfigure", async () => {
+    opnsenseClient.setDnsbl.mockResolvedValue(undefined);
+
+    const call = makeUpdateCall("dnsbl-uuid-1", { description: "old" }, { description: "new" });
+    const { err } = await callHandler(opnsenseUnboundDnsblResource.update, call);
+
+    expect(err).toBeNull();
+    expect(opnsenseClient.withUnboundReconfigure).toHaveBeenCalled();
+  });
+
+  it("returns error on API failure", async () => {
+    opnsenseClient.setDnsbl.mockRejectedValue(new Error("server error"));
+
+    const call = makeUpdateCall("dnsbl-uuid-1", {}, { description: "new" });
+    const { err } = await callHandler(opnsenseUnboundDnsblResource.update, call);
+
+    expect(err).not.toBeNull();
+    expect(err.message).toContain("Failed to update DNSBL");
+  });
+});
+
+describe("opnsenseUnboundDnsbl delete", () => {
+  beforeEach(() => { jest.clearAllMocks(); });
+
+  it("deletes DNSBL via withUnboundReconfigure", async () => {
+    opnsenseClient.delDnsbl.mockResolvedValue(undefined);
+
+    const call = makeDeleteCall("dnsbl-uuid-1");
+    const { err } = await callHandler(opnsenseUnboundDnsblResource.delete, call);
+
+    expect(err).toBeNull();
+    expect(opnsenseClient.withUnboundReconfigure).toHaveBeenCalled();
+  });
+
+  it("ignores 404 on delete", async () => {
+    opnsenseClient.delDnsbl.mockRejectedValue(new Error("OPNsense API failed (404): not found"));
+
+    const call = makeDeleteCall("gone-uuid");
+    const { err } = await callHandler(opnsenseUnboundDnsblResource.delete, call);
+
+    expect(err).toBeNull();
+  });
+
+  it("returns error on non-404 failure", async () => {
+    opnsenseClient.delDnsbl.mockRejectedValue(new Error("connection refused"));
+
+    const call = makeDeleteCall("dnsbl-uuid-1");
+    const { err } = await callHandler(opnsenseUnboundDnsblResource.delete, call);
+
+    expect(err).not.toBeNull();
+    expect(err.message).toContain("Failed to delete DNSBL");
   });
 });
