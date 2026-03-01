@@ -1,5 +1,5 @@
 import * as grpc from "@grpc/grpc-js";
-import { structToObject, objectToStruct, makeCheckFailure, GrpcCallback, GrpcCall } from "../helpers";
+import { structToObject, objectToStruct, makeCheckFailure, valuesEqual, GrpcCallback, GrpcCall } from "../helpers";
 import {
   getLxcContainer,
   createLxcContainer,
@@ -14,8 +14,8 @@ import {
 const providerProto = require("@pulumi/pulumi/proto/provider_pb");
 const emptyProto = require("google-protobuf/google/protobuf/empty_pb");
 
-const REPLACE_FIELDS = ["name", "dist", "release", "arch"];
-const UPDATE_FIELDS = ["config", "autostart"];
+const REPLACE_FIELDS = ["name", "dist", "release", "arch", "autostart"];
+const UPDATE_FIELDS = ["config"];
 
 function containerToOutputs(info: LxcContainerInfo, inputs: Record<string, any>): Record<string, any> {
   return {
@@ -87,7 +87,7 @@ export const lxcContainerResource = {
     for (const field of UPDATE_FIELDS) {
       const oldVal = olds[field];
       const newVal = news[field];
-      if (oldVal !== newVal && !(oldVal === undefined && newVal === undefined)) {
+      if (!valuesEqual(oldVal, newVal)) {
         diffs.push(field);
         const propDiff = new providerProto.PropertyDiff();
         propDiff.setKind(providerProto.PropertyDiff.Kind.UPDATE);

@@ -166,7 +166,7 @@ describe("lxcContainer diff", () => {
     expect(response.getReplacesList()).not.toContain("config");
   });
 
-  it("marks autostart change as UPDATE (not replace)", async () => {
+  it("marks autostart change as UPDATE_REPLACE", async () => {
     const olds = { name: "test", dist: "ubuntu", release: "jammy", arch: "amd64", autostart: false };
     const news = { name: "test", dist: "ubuntu", release: "jammy", arch: "amd64", autostart: true };
     const call = makeDiffCall(olds, news);
@@ -174,7 +174,7 @@ describe("lxcContainer diff", () => {
 
     expect(response.getChanges()).toBe(providerProto.DiffResponse.DiffChanges.DIFF_SOME);
     expect(response.getDiffsList()).toContain("autostart");
-    expect(response.getReplacesList()).not.toContain("autostart");
+    expect(response.getReplacesList()).toContain("autostart");
   });
 
   it("detects multiple changes", async () => {
