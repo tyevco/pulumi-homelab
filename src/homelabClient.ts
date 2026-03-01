@@ -83,7 +83,7 @@ async function request<T>(method: string, path: string, body?: any): Promise<T> 
     let message: string;
     try {
       const json = JSON.parse(text);
-      message = json.error || text;
+      message = json.message || json.error || text;
     } catch {
       message = text;
     }

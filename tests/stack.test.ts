@@ -216,6 +216,63 @@ describe("stack diff", () => {
     expect(response.getChanges()).toBe(providerProto.DiffResponse.DiffChanges.DIFF_SOME);
     expect(response.getDiffsList()).toContain("composeOverride");
   });
+
+  it("falls back to simple diff when compose YAML parsing fails", async () => {
+    const olds = {
+      name: "test",
+      composeYaml: "valid: yaml",
+      running: true,
+    };
+    const news = {
+      name: "test",
+      composeYaml: "%YAML 99.99",
+      running: true,
+    };
+    const call = makeDiffCall(olds, news);
+    const { response } = await callHandler(stackResource.diff, call);
+
+    expect(response.getChanges()).toBe(providerProto.DiffResponse.DiffChanges.DIFF_SOME);
+    expect(response.getDiffsList()).toContain("composeYaml");
+    // Falls back to coarse "composeYaml" diff instead of granular compose.* diffs
+    const detailedDiff = response.getDetaileddiffMap();
+    expect(detailedDiff.get("composeYaml")).toBeDefined();
+  });
+
+  it("treats empty override as no override (no false diff)", async () => {
+    const olds = {
+      name: "test",
+      composeYaml: "services:\n  web:\n    image: nginx",
+      running: true,
+      composeOverride: "",
+    };
+    const news = {
+      name: "test",
+      composeYaml: "services:\n  web:\n    image: nginx",
+      running: true,
+    };
+    const call = makeDiffCall(olds, news);
+    const { response } = await callHandler(stackResource.diff, call);
+
+    expect(response.getChanges()).toBe(providerProto.DiffResponse.DiffChanges.DIFF_NONE);
+  });
+
+  it("treats empty envFile as no envFile (no false diff)", async () => {
+    const olds = {
+      name: "test",
+      composeYaml: "version: '3'",
+      running: true,
+      envFile: "",
+    };
+    const news = {
+      name: "test",
+      composeYaml: "version: '3'",
+      running: true,
+    };
+    const call = makeDiffCall(olds, news);
+    const { response } = await callHandler(stackResource.diff, call);
+
+    expect(response.getChanges()).toBe(providerProto.DiffResponse.DiffChanges.DIFF_NONE);
+  });
 });
 
 describe("stack create", () => {
@@ -401,6 +458,93 @@ describe("stack update", () => {
     expect(err).toBeNull();
     expect(homelabClient.stopStack).toHaveBeenCalledWith("web");
     expect(homelabClient.startStack).not.toHaveBeenCalled();
+  });
+
+  it("calls updateStack when envFile changed", async () => {
+    const stackInfo = { name: "web", status: "running", composeYaml: "version: '3'", containers: [] };
+    homelabClient.updateStack.mockResolvedValue(stackInfo);
+    homelabClient.getStack.mockResolvedValue(stackInfo);
+
+    const olds = { name: "web", composeYaml: "version: '3'", running: true, envFile: "FOO=bar" };
+    const news = { name: "web", composeYaml: "version: '3'", running: true, envFile: "FOO=baz" };
+    const call = makeUpdateCall("web", olds, news);
+    const { err } = await callHandler(stackResource.update, call);
+
+    expect(err).toBeNull();
+    expect(homelabClient.updateStack).toHaveBeenCalled();
+  });
+
+  it("calls updateStack when composeOverride changed", async () => {
+    const stackInfo = { name: "web", status: "running", composeYaml: "version: '3'", containers: [] };
+    homelabClient.updateStack.mockResolvedValue(stackInfo);
+    homelabClient.getStack.mockResolvedValue(stackInfo);
+
+    const olds = { name: "web", composeYaml: "version: '3'", running: true };
+    const news = { name: "web", composeYaml: "version: '3'", running: true, composeOverride: "services:\n  web:\n    ports:\n      - '8080:80'" };
+    const call = makeUpdateCall("web", olds, news);
+    const { err } = await callHandler(stackResource.update, call);
+
+    expect(err).toBeNull();
+    expect(homelabClient.updateStack).toHaveBeenCalled();
+  });
+
+  it("handles combined compose and running change", async () => {
+    const stackInfo = { name: "web", status: "running", composeYaml: "version: '4'", containers: [] };
+    homelabClient.updateStack.mockResolvedValue(stackInfo);
+    homelabClient.startStack.mockResolvedValue(stackInfo);
+    homelabClient.getStack.mockResolvedValue(stackInfo);
+
+    const olds = { name: "web", composeYaml: "version: '3'", running: false };
+    const news = { name: "web", composeYaml: "version: '4'", running: true };
+    const call = makeUpdateCall("web", olds, news);
+    const { err } = await callHandler(stackResource.update, call);
+
+    expect(err).toBeNull();
+    expect(homelabClient.updateStack).toHaveBeenCalled();
+    expect(homelabClient.startStack).toHaveBeenCalledWith("web");
+  });
+
+  it("skips updateStack when only running changed", async () => {
+    const stackInfo = { name: "web", status: "stopped", composeYaml: "version: '3'", containers: [] };
+    homelabClient.stopStack.mockResolvedValue(stackInfo);
+    homelabClient.getStack.mockResolvedValue(stackInfo);
+
+    const olds = { name: "web", composeYaml: "version: '3'", running: true };
+    const news = { name: "web", composeYaml: "version: '3'", running: false };
+    const call = makeUpdateCall("web", olds, news);
+    const { err } = await callHandler(stackResource.update, call);
+
+    expect(err).toBeNull();
+    expect(homelabClient.updateStack).not.toHaveBeenCalled();
+    expect(homelabClient.stopStack).toHaveBeenCalledWith("web");
+  });
+
+  it("calls updateStack when autostart changed", async () => {
+    const stackInfo = { name: "web", status: "running", composeYaml: "version: '3'", containers: [] };
+    homelabClient.updateStack.mockResolvedValue(stackInfo);
+    homelabClient.getStack.mockResolvedValue(stackInfo);
+
+    const olds = { name: "web", composeYaml: "version: '3'", running: true, autostart: false };
+    const news = { name: "web", composeYaml: "version: '3'", running: true, autostart: true };
+    const call = makeUpdateCall("web", olds, news);
+    const { err } = await callHandler(stackResource.update, call);
+
+    expect(err).toBeNull();
+    expect(homelabClient.updateStack).toHaveBeenCalled();
+  });
+
+  it("calls updateStack when displayName changed", async () => {
+    const stackInfo = { name: "web", status: "running", composeYaml: "version: '3'", containers: [] };
+    homelabClient.updateStack.mockResolvedValue(stackInfo);
+    homelabClient.getStack.mockResolvedValue(stackInfo);
+
+    const olds = { name: "web", composeYaml: "version: '3'", running: true, displayName: "Old" };
+    const news = { name: "web", composeYaml: "version: '3'", running: true, displayName: "New" };
+    const call = makeUpdateCall("web", olds, news);
+    const { err } = await callHandler(stackResource.update, call);
+
+    expect(err).toBeNull();
+    expect(homelabClient.updateStack).toHaveBeenCalled();
   });
 
   it("returns error on API failure", async () => {
