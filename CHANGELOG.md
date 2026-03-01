@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.4](https://github.com/tyevco/pulumi-homelab/compare/v0.3.3...v0.3.4) (2026-03-01)
+
+
+### Bug Fixes
+
+* omit Content-Type header on GET requests to OPNsense API ([79a7175](https://github.com/tyevco/pulumi-homelab/commit/79a7175853e9f5bb9bd28f28a6ffce2ec79d19ad))
+* omit Content-Type on GET requests to OPNsense API ([0bf4d44](https://github.com/tyevco/pulumi-homelab/commit/0bf4d445e3bedf18bedd28f24eb6a94ef2632c0f))
+
 ## [0.3.3](https://github.com/tyevco/pulumi-homelab/compare/v0.3.2...v0.3.3) (2026-03-01)
 
 
