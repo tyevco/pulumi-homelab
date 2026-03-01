@@ -991,6 +991,39 @@ describe("normalizeGetItemResponse", () => {
     expect(result.meta).toEqual({});
   });
 
+  it("extracts selected key when selected is boolean true", () => {
+    const data = {
+      type: {
+        host: { value: "Host(s)", selected: true },
+        network: { value: "Network(s)", selected: false },
+      },
+    };
+    const result = normalizeGetItemResponse(data);
+    expect(result.type).toBe("host");
+  });
+
+  it("extracts selected key when selected is string '1'", () => {
+    const data = {
+      type: {
+        host: { value: "Host(s)", selected: "0" },
+        port: { value: "Port(s)", selected: "1" },
+      },
+    };
+    const result = normalizeGetItemResponse(data);
+    expect(result.type).toBe("port");
+  });
+
+  it("handles mixed selected value types (number and boolean)", () => {
+    const data = {
+      action: {
+        pass: { value: "Pass", selected: true },
+        block: { value: "Block", selected: 0 },
+      },
+    };
+    const result = normalizeGetItemResponse(data);
+    expect(result.action).toBe("pass");
+  });
+
   it("handles full alias getItem response", () => {
     const data = {
       enabled: "1",
@@ -1431,6 +1464,112 @@ describe("translation edge cases", () => {
   it("dnsblFromApi returns undefined for empty cache_ttl", () => {
     const result = dnsblFromApi({ cache_ttl: "" });
     expect(result.cacheTtl).toBeUndefined();
+  });
+
+  it("aliasFromApi handles un-normalized selected-map objects gracefully", () => {
+    // If normalizeGetItemResponse misses a field, fromApi should still produce strings
+    const alias = {
+      name: "test",
+      type: {
+        host: { value: "Host(s)", selected: 1 },
+        port: { value: "Port(s)", selected: 0 },
+      } as any,
+      content: {} as any,
+      enabled: "1",
+    };
+    const result = aliasFromApi(alias);
+    // ensureString detects the selected map and extracts "host"
+    expect(result.type).toBe("host");
+    // empty object → empty string
+    expect(result.content).toBe("");
+    expect(result.enabled).toBe(true);
+  });
+
+  it("ruleFromApi handles un-normalized selected-map objects gracefully", () => {
+    const rule = {
+      action: {
+        pass: { value: "Pass", selected: 1 },
+        block: { value: "Block", selected: 0 },
+      } as any,
+      interface: {
+        lan: { value: "LAN", selected: 1 },
+      } as any,
+      log: {
+        "0": { value: "No", selected: 1 },
+        "1": { value: "Yes", selected: 0 },
+      } as any,
+      sequence: "5",
+    };
+    const result = ruleFromApi(rule);
+    expect(result.action).toBe("pass");
+    expect(result.interface).toBe("lan");
+    expect(result.log).toBe(false); // ensureString extracts "0", toBool("0") = false
+    expect(result.sequence).toBe(5);
+  });
+
+  it("hostOverrideFromApi handles un-normalized rr object gracefully", () => {
+    const data = {
+      rr: {
+        A: { value: "A (IPv4)", selected: 1 },
+        AAAA: { value: "AAAA (IPv6)", selected: 0 },
+      } as any,
+      hostname: "test",
+    };
+    const result = hostOverrideFromApi(data);
+    expect(result.rr).toBe("A");
+    expect(result.hostname).toBe("test");
+  });
+
+  it("aclFromApi handles un-normalized action object gracefully", () => {
+    const data = {
+      action: {
+        allow: { value: "Allow", selected: 1 },
+        deny: { value: "Deny", selected: 0 },
+      } as any,
+      name: "test-acl",
+    };
+    const result = aclFromApi(data);
+    expect(result.action).toBe("allow");
+    expect(result.name).toBe("test-acl");
+  });
+
+  it("forwardFromApi handles un-normalized type object gracefully", () => {
+    const data = {
+      type: {
+        forward: { value: "Forward", selected: 0 },
+        dot: { value: "DNS-over-TLS", selected: 1 },
+      } as any,
+      server: "1.1.1.1",
+    };
+    const result = forwardFromApi(data);
+    expect(result.type).toBe("dot");
+    expect(result.server).toBe("1.1.1.1");
+  });
+
+  it("dnsblFromApi handles un-normalized type object gracefully", () => {
+    const data = {
+      type: {
+        dnsbl: { value: "DNSBL", selected: 1 },
+      } as any,
+      lists: {
+        listA: { value: "List A", selected: 1 },
+        listB: { value: "List B", selected: 1 },
+      } as any,
+    };
+    const result = dnsblFromApi(data);
+    expect(result.type).toBe("dnsbl");
+    expect(result.lists).toBe("listA\nlistB");
+  });
+
+  it("ensureString converts numbers to strings", () => {
+    // Simulate a numeric field being passed as a number
+    const result = ruleFromApi({ sequence: 42 as any });
+    expect(result.sequence).toBe(42); // safeParseInt(ensureString(42)) = safeParseInt("42") = 42
+  });
+
+  it("ensureString converts null to empty string", () => {
+    const result = aliasFromApi({ type: null as any });
+    expect(result.type).toBe("");
   });
 });
 

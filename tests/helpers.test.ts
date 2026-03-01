@@ -172,6 +172,27 @@ describe("objectToStruct", () => {
     expect(result).toEqual({ name: "test", present: "yes" });
     expect("missing" in result).toBe(false);
   });
+
+  it("recursively filters undefined values in nested objects", () => {
+    const input = { outer: { present: "yes", missing: undefined } };
+    const struct = objectToStruct(input);
+    const result = struct.toJavaScript();
+    expect(result).toEqual({ outer: { present: "yes" } });
+  });
+
+  it("recursively filters undefined values in nested arrays", () => {
+    const input = { items: [{ name: "a", missing: undefined }, { name: "b" }] };
+    const struct = objectToStruct(input);
+    const result = struct.toJavaScript();
+    expect(result).toEqual({ items: [{ name: "a" }, { name: "b" }] });
+  });
+
+  it("handles deeply nested undefined without throwing", () => {
+    const input = { a: { b: { c: { val: "ok", bad: undefined } } } };
+    expect(() => objectToStruct(input)).not.toThrow();
+    const result = objectToStruct(input).toJavaScript();
+    expect(result).toEqual({ a: { b: { c: { val: "ok" } } } });
+  });
 });
 
 describe("makeCheckFailure", () => {

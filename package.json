@@ -7,7 +7,7 @@
     "build": "tsc",
     "clean": "rm -rf dist",
     "rebuild": "npm run clean && npm run build",
-    "deploy:local": "npm run rebuild && cp -r dist package.json node_modules schema.json pulumi-resource-homelab pulumi-resource-homelab.cmd ~/.pulumi/plugins/resource-homelab-v0.1.0/",
+    "deploy:local": "npm run rebuild && VERSION=$(node -p \"require('./package.json').version\") && mkdir -p ~/.pulumi/plugins/resource-homelab-v${VERSION} && cp -r dist package.json node_modules schema.json pulumi-resource-homelab pulumi-resource-homelab.cmd ~/.pulumi/plugins/resource-homelab-v${VERSION}/",
     "test": "jest"
   },
   "keywords": [
