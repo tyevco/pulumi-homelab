@@ -1,5 +1,17 @@
-import { makeCheckCall, makeDiffCall, callHandler } from "./testUtils";
+import { makeCheckCall, makeDiffCall, makeCreateCall, makeReadCall, makeUpdateCall, makeDeleteCall, callHandler } from "./testUtils";
 import { stackResource } from "../src/resources/stack";
+
+jest.mock("../src/homelabClient", () => ({
+  ensureConfigured: jest.fn(),
+  getStack: jest.fn(),
+  createStack: jest.fn(),
+  updateStack: jest.fn(),
+  deleteStack: jest.fn(),
+  startStack: jest.fn(),
+  stopStack: jest.fn(),
+}));
+
+const homelabClient = require("../src/homelabClient");
 
 const providerProto = require("@pulumi/pulumi/proto/provider_pb");
 
@@ -203,5 +215,238 @@ describe("stack diff", () => {
 
     expect(response.getChanges()).toBe(providerProto.DiffResponse.DiffChanges.DIFF_SOME);
     expect(response.getDiffsList()).toContain("composeOverride");
+  });
+});
+
+describe("stack create", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it("returns preview outputs without calling API", async () => {
+    const inputs = { name: "web", composeYaml: "version: '3'", running: true };
+    const call = makeCreateCall(inputs, true);
+    const { err, response } = await callHandler(stackResource.create, call);
+
+    expect(err).toBeNull();
+    expect(response.getId()).toBe("web");
+    const props = response.getProperties().toJavaScript();
+    expect(props.name).toBe("web");
+    expect(props.status).toBe("unknown");
+    expect(props.containers).toEqual([]);
+    expect(homelabClient.createStack).not.toHaveBeenCalled();
+  });
+
+  it("creates stack with running=true", async () => {
+    const stackInfo = { name: "web", status: "running", composeYaml: "version: '3'", envFile: "", containers: [{ name: "web-1", status: "running" }] };
+    homelabClient.createStack.mockResolvedValue(stackInfo);
+
+    const inputs = { name: "web", composeYaml: "version: '3'", envFile: "FOO=bar", running: true };
+    const call = makeCreateCall(inputs);
+    const { err, response } = await callHandler(stackResource.create, call);
+
+    expect(err).toBeNull();
+    expect(response.getId()).toBe("web");
+    expect(homelabClient.createStack).toHaveBeenCalledWith("web", "version: '3'", "FOO=bar", true, undefined, undefined, undefined);
+  });
+
+  it("creates stack with running=false (no start)", async () => {
+    const stackInfo = { name: "web", status: "stopped", composeYaml: "version: '3'", containers: [] };
+    homelabClient.createStack.mockResolvedValue(stackInfo);
+
+    const inputs = { name: "web", composeYaml: "version: '3'", running: false };
+    const call = makeCreateCall(inputs);
+    const { err } = await callHandler(stackResource.create, call);
+
+    expect(err).toBeNull();
+    expect(homelabClient.createStack).toHaveBeenCalledWith("web", "version: '3'", undefined, false, undefined, undefined, undefined);
+  });
+
+  it("returns error on API failure", async () => {
+    homelabClient.createStack.mockRejectedValue(new Error("connection refused"));
+
+    const inputs = { name: "web", composeYaml: "version: '3'", running: true };
+    const call = makeCreateCall(inputs);
+    const { err } = await callHandler(stackResource.create, call);
+
+    expect(err).not.toBeNull();
+    expect(err.message).toContain("Failed to create stack");
+  });
+});
+
+describe("stack read", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it("reads stack and returns outputs", async () => {
+    const stackInfo = { name: "web", status: "running", composeYaml: "version: '3'", envFile: "FOO=bar", autostart: true, displayName: "Web App", containers: [{ name: "web-1", status: "running" }] };
+    homelabClient.getStack.mockResolvedValue(stackInfo);
+
+    const call = makeReadCall("web", { name: "web", composeYaml: "version: '3'", running: true });
+    const { err, response } = await callHandler(stackResource.read, call);
+
+    expect(err).toBeNull();
+    expect(response.getId()).toBe("web");
+    const props = response.getProperties().toJavaScript();
+    expect(props.name).toBe("web");
+    expect(props.status).toBe("running");
+    expect(props.running).toBe(true);
+    expect(props.composeYaml).toBe("version: '3'");
+    expect(props.envFile).toBe("FOO=bar");
+    expect(props.autostart).toBe(true);
+    expect(props.displayName).toBe("Web App");
+  });
+
+  it("returns empty response on 404 (triggers recreation)", async () => {
+    homelabClient.getStack.mockRejectedValue(new Error("Homelab API GET /api/stacks/gone failed (404): not found"));
+
+    const call = makeReadCall("gone", { name: "gone" });
+    const { err, response } = await callHandler(stackResource.read, call);
+
+    expect(err).toBeNull();
+    expect(response.getId()).toBeFalsy();
+  });
+
+  it("returns error on non-404 API failure", async () => {
+    homelabClient.getStack.mockRejectedValue(new Error("connection timeout"));
+
+    const call = makeReadCall("web", { name: "web" });
+    const { err } = await callHandler(stackResource.read, call);
+
+    expect(err).not.toBeNull();
+    expect(err.message).toContain("Failed to read stack");
+  });
+
+  it("sets running based on status", async () => {
+    const stackInfo = { name: "web", status: "stopped", composeYaml: "version: '3'", containers: [] };
+    homelabClient.getStack.mockResolvedValue(stackInfo);
+
+    const call = makeReadCall("web", { name: "web" });
+    const { response } = await callHandler(stackResource.read, call);
+
+    const props = response.getProperties().toJavaScript();
+    expect(props.running).toBe(false);
+  });
+
+  it("treats partial status as running", async () => {
+    const stackInfo = { name: "web", status: "partial", composeYaml: "version: '3'", containers: [] };
+    homelabClient.getStack.mockResolvedValue(stackInfo);
+
+    const call = makeReadCall("web", { name: "web" });
+    const { response } = await callHandler(stackResource.read, call);
+
+    const props = response.getProperties().toJavaScript();
+    expect(props.running).toBe(true);
+  });
+});
+
+describe("stack update", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it("returns preview outputs without calling API", async () => {
+    const olds = { name: "web", composeYaml: "version: '3'", running: true, status: "running", containers: [{ name: "web-1" }] };
+    const news = { name: "web", composeYaml: "version: '4'", running: true };
+    const call = makeUpdateCall("web", olds, news, true);
+    const { err, response } = await callHandler(stackResource.update, call);
+
+    expect(err).toBeNull();
+    const props = response.getProperties().toJavaScript();
+    expect(props.composeYaml).toBe("version: '4'");
+    expect(props.status).toBe("running");
+    expect(homelabClient.updateStack).not.toHaveBeenCalled();
+  });
+
+  it("calls updateStack when compose changed", async () => {
+    const stackInfo = { name: "web", status: "running", composeYaml: "version: '4'", containers: [] };
+    homelabClient.updateStack.mockResolvedValue(stackInfo);
+    homelabClient.getStack.mockResolvedValue(stackInfo);
+
+    const olds = { name: "web", composeYaml: "version: '3'", running: true };
+    const news = { name: "web", composeYaml: "version: '4'", running: true };
+    const call = makeUpdateCall("web", olds, news);
+    const { err } = await callHandler(stackResource.update, call);
+
+    expect(err).toBeNull();
+    expect(homelabClient.updateStack).toHaveBeenCalled();
+  });
+
+  it("calls startStack when running changed from false to true", async () => {
+    const stackInfo = { name: "web", status: "running", composeYaml: "version: '3'", containers: [] };
+    homelabClient.startStack.mockResolvedValue(stackInfo);
+    homelabClient.getStack.mockResolvedValue(stackInfo);
+
+    const olds = { name: "web", composeYaml: "version: '3'", running: false };
+    const news = { name: "web", composeYaml: "version: '3'", running: true };
+    const call = makeUpdateCall("web", olds, news);
+    const { err } = await callHandler(stackResource.update, call);
+
+    expect(err).toBeNull();
+    expect(homelabClient.startStack).toHaveBeenCalledWith("web");
+    expect(homelabClient.stopStack).not.toHaveBeenCalled();
+  });
+
+  it("calls stopStack when running changed from true to false", async () => {
+    const stackInfo = { name: "web", status: "stopped", composeYaml: "version: '3'", containers: [] };
+    homelabClient.stopStack.mockResolvedValue(stackInfo);
+    homelabClient.getStack.mockResolvedValue(stackInfo);
+
+    const olds = { name: "web", composeYaml: "version: '3'", running: true };
+    const news = { name: "web", composeYaml: "version: '3'", running: false };
+    const call = makeUpdateCall("web", olds, news);
+    const { err } = await callHandler(stackResource.update, call);
+
+    expect(err).toBeNull();
+    expect(homelabClient.stopStack).toHaveBeenCalledWith("web");
+    expect(homelabClient.startStack).not.toHaveBeenCalled();
+  });
+
+  it("returns error on API failure", async () => {
+    homelabClient.updateStack.mockRejectedValue(new Error("server error"));
+
+    const olds = { name: "web", composeYaml: "version: '3'", running: true };
+    const news = { name: "web", composeYaml: "version: '4'", running: true };
+    const call = makeUpdateCall("web", olds, news);
+    const { err } = await callHandler(stackResource.update, call);
+
+    expect(err).not.toBeNull();
+    expect(err.message).toContain("Failed to update stack");
+  });
+});
+
+describe("stack delete", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it("deletes stack successfully", async () => {
+    homelabClient.deleteStack.mockResolvedValue(undefined);
+
+    const call = makeDeleteCall("web");
+    const { err } = await callHandler(stackResource.delete, call);
+
+    expect(err).toBeNull();
+    expect(homelabClient.deleteStack).toHaveBeenCalledWith("web");
+  });
+
+  it("ignores 404 on delete (already gone)", async () => {
+    homelabClient.deleteStack.mockRejectedValue(new Error("Homelab API DELETE failed (404): not found"));
+
+    const call = makeDeleteCall("gone");
+    const { err } = await callHandler(stackResource.delete, call);
+
+    expect(err).toBeNull();
+  });
+
+  it("returns error on non-404 failure", async () => {
+    homelabClient.deleteStack.mockRejectedValue(new Error("connection refused"));
+
+    const call = makeDeleteCall("web");
+    const { err } = await callHandler(stackResource.delete, call);
+
+    expect(err).not.toBeNull();
+    expect(err.message).toContain("Failed to delete stack");
   });
 });
