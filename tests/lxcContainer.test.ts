@@ -7,6 +7,7 @@ jest.mock("../src/homelabClient", () => ({
   getLxcContainer: jest.fn(),
   saveLxcConfig: jest.fn(),
   startLxcContainer: jest.fn(),
+  stopLxcContainer: jest.fn(),
   deleteLxcContainer: jest.fn(),
 }));
 
@@ -379,17 +380,37 @@ describe("lxcContainer delete", () => {
     jest.clearAllMocks();
   });
 
-  it("deletes container successfully", async () => {
+  it("stops container before deleting", async () => {
+    homelabClient.stopLxcContainer.mockResolvedValue(undefined);
     homelabClient.deleteLxcContainer.mockResolvedValue(undefined);
 
     const call = makeDeleteCall("myct");
     const { err } = await callHandler(lxcContainerResource.delete, call);
 
     expect(err).toBeNull();
+    expect(homelabClient.stopLxcContainer).toHaveBeenCalledWith("myct");
+    expect(homelabClient.deleteLxcContainer).toHaveBeenCalledWith("myct");
+
+    // Verify order: stop before delete
+    const stopOrder = homelabClient.stopLxcContainer.mock.invocationCallOrder[0];
+    const deleteOrder = homelabClient.deleteLxcContainer.mock.invocationCallOrder[0];
+    expect(stopOrder).toBeLessThan(deleteOrder);
+  });
+
+  it("proceeds with delete even if stop fails (container already stopped)", async () => {
+    homelabClient.stopLxcContainer.mockRejectedValue(new Error("container not running"));
+    homelabClient.deleteLxcContainer.mockResolvedValue(undefined);
+
+    const call = makeDeleteCall("myct");
+    const { err } = await callHandler(lxcContainerResource.delete, call);
+
+    expect(err).toBeNull();
+    expect(homelabClient.stopLxcContainer).toHaveBeenCalledWith("myct");
     expect(homelabClient.deleteLxcContainer).toHaveBeenCalledWith("myct");
   });
 
   it("ignores 404 on delete (already gone)", async () => {
+    homelabClient.stopLxcContainer.mockResolvedValue(undefined);
     homelabClient.deleteLxcContainer.mockRejectedValue(new Error("Homelab API DELETE failed (404): not found"));
 
     const call = makeDeleteCall("gone");
@@ -399,6 +420,7 @@ describe("lxcContainer delete", () => {
   });
 
   it("returns error on non-404 failure", async () => {
+    homelabClient.stopLxcContainer.mockResolvedValue(undefined);
     homelabClient.deleteLxcContainer.mockRejectedValue(new Error("connection refused"));
 
     const call = makeDeleteCall("myct");
