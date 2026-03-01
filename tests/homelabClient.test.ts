@@ -70,6 +70,21 @@ describe("Homelab client API", () => {
     expect(opts.headers["Authorization"]).toBe("Bearer my-api-key");
   });
 
+  describe("listStacks", () => {
+    it("sends GET to /api/stacks", async () => {
+      const client = setupConfiguredModule();
+      const stacks = [{ name: "web", status: "running" }, { name: "db", status: "stopped" }];
+      mockedFetch.mockResolvedValueOnce(mockResponse(stacks));
+
+      const result = await client.listStacks();
+
+      expect(result).toEqual(stacks);
+      const [url, opts] = mockedFetch.mock.calls[0] as [string, any];
+      expect(url).toBe("https://homelab.local/api/stacks");
+      expect(opts.method).toBe("GET");
+    });
+  });
+
   describe("getStack", () => {
     it("sends GET to /api/stacks/:name", async () => {
       const client = setupConfiguredModule();
@@ -182,6 +197,21 @@ describe("Homelab client API", () => {
       expect(url).toBe("https://homelab.local/api/traefik/static");
       expect(opts.method).toBe("PUT");
       expect(JSON.parse(opts.body)).toEqual({ content: "new-yaml" });
+    });
+  });
+
+  describe("listTraefikRoutes", () => {
+    it("sends GET to /api/traefik/routes", async () => {
+      const client = setupConfiguredModule();
+      const routes = [{ name: "rt1", content: "yaml1" }, { name: "rt2", content: "yaml2" }];
+      mockedFetch.mockResolvedValueOnce(mockResponse(routes));
+
+      const result = await client.listTraefikRoutes();
+
+      expect(result).toEqual(routes);
+      const [url, opts] = mockedFetch.mock.calls[0] as [string, any];
+      expect(url).toBe("https://homelab.local/api/traefik/routes");
+      expect(opts.method).toBe("GET");
     });
   });
 

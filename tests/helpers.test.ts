@@ -276,4 +276,17 @@ describe("valuesEqual", () => {
   it("treats false and undefined as not equal", () => {
     expect(valuesEqual(false, undefined)).toBe(false);
   });
+
+  it("treats null and null as equal", () => {
+    expect(valuesEqual(null, null)).toBe(true);
+  });
+
+  it("treats null and undefined as not equal", () => {
+    // null values from protobuf are distinct from undefined (missing)
+    expect(valuesEqual(null, undefined)).toBe(false);
+  });
+
+  it("treats null and empty string as not equal", () => {
+    expect(valuesEqual(null, "")).toBe(false);
+  });
 });

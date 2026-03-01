@@ -75,6 +75,17 @@ describe("opnsenseUnboundHostOverride check", () => {
     expect(inputs.addptr).toBe(false);
   });
 
+  it("accepts TXT as a valid rr value", async () => {
+    const call = makeCheckCall({ domain: "example.com", rr: "TXT", txtdata: "v=spf1 include:example.com ~all" });
+    const { err, response } = await callHandler(opnsenseUnboundHostOverrideResource.check, call);
+
+    expect(err).toBeNull();
+    expect(response.getFailuresList().length).toBe(0);
+    const inputs = response.getInputs().toJavaScript();
+    expect(inputs.rr).toBe("TXT");
+    expect(inputs.txtdata).toBe("v=spf1 include:example.com ~all");
+  });
+
   it("rejects invalid rr value", async () => {
     const call = makeCheckCall({ domain: "example.com", rr: "CNAME" });
     const { err, response } = await callHandler(opnsenseUnboundHostOverrideResource.check, call);
@@ -180,7 +191,7 @@ describe("opnsenseUnboundHostOverride create", () => {
 describe("opnsenseUnboundHostOverride read", () => {
   beforeEach(() => { jest.clearAllMocks(); });
 
-  it("reads host override and returns outputs with all fields", async () => {
+  it("reads host override and returns outputs with all fields and setInputs", async () => {
     opnsenseClient.getHostOverride.mockResolvedValue({ hostoverride: { hostname: "myhost", domain: "example.com", enabled: "1", rr: "A", server: "1.2.3.4" } });
 
     const call = makeReadCall("ho-uuid-1");
@@ -195,6 +206,15 @@ describe("opnsenseUnboundHostOverride read", () => {
     expect(props.enabled).toBe(true);
     expect(props.rr).toBe("A");
     expect(props.server).toBe("1.2.3.4");
+
+    // Verify setInputs contains input fields (no uuid)
+    const inputs = response.getInputs().toJavaScript();
+    expect(inputs.hostname).toBe("myhost");
+    expect(inputs.domain).toBe("example.com");
+    expect(inputs.enabled).toBe(true);
+    expect(inputs.rr).toBe("A");
+    expect(inputs.server).toBe("1.2.3.4");
+    expect(inputs.uuid).toBeUndefined();
   });
 
   it("returns empty response on 404", async () => {
@@ -272,6 +292,15 @@ describe("opnsenseUnboundHostOverride delete", () => {
 
   it("ignores 404 on delete", async () => {
     opnsenseClient.delHostOverride.mockRejectedValue(new Error("OPNsense API failed (404): not found"));
+
+    const call = makeDeleteCall("gone-uuid");
+    const { err } = await callHandler(opnsenseUnboundHostOverrideResource.delete, call);
+
+    expect(err).toBeNull();
+  });
+
+  it("ignores 'not found' text on delete", async () => {
+    opnsenseClient.delHostOverride.mockRejectedValue(new Error("resource not found"));
 
     const call = makeDeleteCall("gone-uuid");
     const { err } = await callHandler(opnsenseUnboundHostOverrideResource.delete, call);

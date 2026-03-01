@@ -24,7 +24,7 @@ export const opnsenseUnboundHostOverrideResource = {
     const inputs = structToObject(call.request.getNews());
     const failures: any[] = [];
 
-    const VALID_RR = ["A", "AAAA", "MX"];
+    const VALID_RR = ["A", "AAAA", "MX", "TXT"];
     if (!inputs.domain) {
       failures.push(makeCheckFailure("domain", "domain is required"));
     }
@@ -168,7 +168,9 @@ export const opnsenseUnboundHostOverrideResource = {
       ensureOpnsenseConfigured();
       await withUnboundReconfigure(() => delHostOverride(id));
     } catch (err: any) {
-      if (!err.message || !err.message.includes("404")) {
+      if (err.message && (err.message.includes("404") || err.message.includes("not found"))) {
+        // Already gone — treat as success
+      } else {
         callback({ code: grpc.status.INTERNAL, message: `Failed to delete host override: ${err.message}` });
         return;
       }

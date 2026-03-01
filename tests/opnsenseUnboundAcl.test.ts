@@ -191,8 +191,8 @@ describe("opnsenseUnboundAcl create", () => {
 describe("opnsenseUnboundAcl read", () => {
   beforeEach(() => { jest.clearAllMocks(); });
 
-  it("reads ACL and returns outputs with all fields", async () => {
-    opnsenseClient.getAcl.mockResolvedValue({ acl: { name: "lan-acl", networks: "10.0.0.0/8", enabled: "1", action: "allow" } });
+  it("reads ACL and returns outputs with all fields and setInputs", async () => {
+    opnsenseClient.getAcl.mockResolvedValue({ acl: { name: "lan-acl", networks: "10.0.0.0/8", enabled: "1", action: "allow", description: "LAN access" } });
 
     const call = makeReadCall("acl-uuid-1");
     const { err, response } = await callHandler(opnsenseUnboundAclResource.read, call);
@@ -205,6 +205,15 @@ describe("opnsenseUnboundAcl read", () => {
     expect(props.networks).toBe("10.0.0.0/8");
     expect(props.enabled).toBe(true);
     expect(props.action).toBe("allow");
+    expect(props.description).toBe("LAN access");
+
+    // Verify setInputs contains input fields (no uuid)
+    const inputs = response.getInputs().toJavaScript();
+    expect(inputs.name).toBe("lan-acl");
+    expect(inputs.networks).toBe("10.0.0.0/8");
+    expect(inputs.enabled).toBe(true);
+    expect(inputs.action).toBe("allow");
+    expect(inputs.uuid).toBeUndefined();
   });
 
   it("returns empty response on 404", async () => {
@@ -279,6 +288,15 @@ describe("opnsenseUnboundAcl delete", () => {
 
   it("ignores 404 on delete", async () => {
     opnsenseClient.delAcl.mockRejectedValue(new Error("OPNsense API failed (404): not found"));
+
+    const call = makeDeleteCall("gone-uuid");
+    const { err } = await callHandler(opnsenseUnboundAclResource.delete, call);
+
+    expect(err).toBeNull();
+  });
+
+  it("ignores 'not found' text on delete", async () => {
+    opnsenseClient.delAcl.mockRejectedValue(new Error("resource not found"));
 
     const call = makeDeleteCall("gone-uuid");
     const { err } = await callHandler(opnsenseUnboundAclResource.delete, call);

@@ -170,7 +170,9 @@ export const opnsenseUnboundForwardResource = {
       ensureOpnsenseConfigured();
       await withUnboundReconfigure(() => delForward(id));
     } catch (err: any) {
-      if (!err.message || !err.message.includes("404")) {
+      if (err.message && (err.message.includes("404") || err.message.includes("not found"))) {
+        // Already gone — treat as success
+      } else {
         callback({ code: grpc.status.INTERNAL, message: `Failed to delete forward: ${err.message}` });
         return;
       }

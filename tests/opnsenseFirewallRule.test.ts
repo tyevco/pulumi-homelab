@@ -9,7 +9,22 @@ jest.mock("../src/opnsenseClient", () => ({
   setFirewallRule: jest.fn(),
   delFirewallRule: jest.fn(),
   ruleToApi: jest.fn((inputs: any) => ({ action: inputs.action, interface: inputs.interface })),
-  ruleFromApi: jest.fn((rule: any) => ({ action: rule.action, interface: rule.interface })),
+  ruleFromApi: jest.fn((rule: any) => {
+    const result: Record<string, any> = {};
+    if (rule.action !== undefined) result.action = rule.action;
+    if (rule.interface !== undefined) result.interface = rule.interface;
+    if (rule.ipprotocol !== undefined) result.ipprotocol = rule.ipprotocol;
+    if (rule.protocol !== undefined) result.protocol = rule.protocol;
+    if (rule.source_net !== undefined) result.sourceNet = rule.source_net;
+    if (rule.destination_net !== undefined) result.destinationNet = rule.destination_net;
+    if (rule.direction !== undefined) result.direction = rule.direction;
+    if (rule.description !== undefined) result.description = rule.description;
+    if (rule.log !== undefined) result.log = rule.log === "1";
+    if (rule.quick !== undefined) result.quick = rule.quick === "1";
+    if (rule.disabled !== undefined) result.disabled = rule.disabled === "1";
+    if (rule.sequence !== undefined) result.sequence = parseInt(rule.sequence, 10);
+    return result;
+  }),
 }));
 
 const opnsenseClient = require("../src/opnsenseClient");
@@ -233,8 +248,15 @@ describe("opnsenseFirewallRule read", () => {
     jest.clearAllMocks();
   });
 
-  it("reads rule and returns outputs with uuid", async () => {
-    opnsenseClient.getFirewallRule.mockResolvedValue({ rule: { action: "pass", interface: "lan" } });
+  it("reads rule and returns outputs with all fields and setInputs", async () => {
+    opnsenseClient.getFirewallRule.mockResolvedValue({
+      rule: {
+        action: "pass", interface: "lan", ipprotocol: "inet", protocol: "TCP",
+        source_net: "10.0.0.0/8", destination_net: "any",
+        direction: "in", description: "Allow LAN", log: "0", quick: "1",
+        disabled: "0", sequence: "10",
+      },
+    });
 
     const call = makeReadCall("abc-123");
     const { err, response } = await callHandler(opnsenseFirewallRuleResource.read, call);
@@ -244,6 +266,23 @@ describe("opnsenseFirewallRule read", () => {
     const props = response.getProperties().toJavaScript();
     expect(props.uuid).toBe("abc-123");
     expect(props.action).toBe("pass");
+    expect(props.interface).toBe("lan");
+    expect(props.ipprotocol).toBe("inet");
+    expect(props.protocol).toBe("TCP");
+    expect(props.sourceNet).toBe("10.0.0.0/8");
+    expect(props.direction).toBe("in");
+    expect(props.description).toBe("Allow LAN");
+    expect(props.log).toBe(false);
+    expect(props.quick).toBe(true);
+    expect(props.sequence).toBe(10);
+
+    // Verify setInputs contains input fields (no uuid)
+    const inputs = response.getInputs().toJavaScript();
+    expect(inputs.action).toBe("pass");
+    expect(inputs.interface).toBe("lan");
+    expect(inputs.ipprotocol).toBe("inet");
+    expect(inputs.description).toBe("Allow LAN");
+    expect(inputs.uuid).toBeUndefined();
   });
 
   it("returns empty response on 404", async () => {
@@ -330,6 +369,15 @@ describe("opnsenseFirewallRule delete", () => {
 
   it("ignores 404 on delete", async () => {
     opnsenseClient.delFirewallRule.mockRejectedValue(new Error("OPNsense API failed (404): not found"));
+
+    const call = makeDeleteCall("gone-uuid");
+    const { err } = await callHandler(opnsenseFirewallRuleResource.delete, call);
+
+    expect(err).toBeNull();
+  });
+
+  it("ignores 'not found' text on delete", async () => {
+    opnsenseClient.delFirewallRule.mockRejectedValue(new Error("resource not found"));
 
     const call = makeDeleteCall("gone-uuid");
     const { err } = await callHandler(opnsenseFirewallRuleResource.delete, call);

@@ -365,6 +365,16 @@ describe("stack read", () => {
     expect(response.getId()).toBeFalsy();
   });
 
+  it("returns empty response on 'not found' text", async () => {
+    homelabClient.getStack.mockRejectedValue(new Error("resource not found"));
+
+    const call = makeReadCall("gone", { name: "gone" });
+    const { err, response } = await callHandler(stackResource.read, call);
+
+    expect(err).toBeNull();
+    expect(response.getId()).toBeFalsy();
+  });
+
   it("returns error on non-404 API failure", async () => {
     homelabClient.getStack.mockRejectedValue(new Error("connection timeout"));
 
@@ -577,6 +587,15 @@ describe("stack delete", () => {
 
   it("ignores 404 on delete (already gone)", async () => {
     homelabClient.deleteStack.mockRejectedValue(new Error("Homelab API DELETE failed (404): not found"));
+
+    const call = makeDeleteCall("gone");
+    const { err } = await callHandler(stackResource.delete, call);
+
+    expect(err).toBeNull();
+  });
+
+  it("ignores 'not found' text on delete", async () => {
+    homelabClient.deleteStack.mockRejectedValue(new Error("resource not found"));
 
     const call = makeDeleteCall("gone");
     const { err } = await callHandler(stackResource.delete, call);

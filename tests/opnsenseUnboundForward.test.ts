@@ -180,8 +180,8 @@ describe("opnsenseUnboundForward create", () => {
 describe("opnsenseUnboundForward read", () => {
   beforeEach(() => { jest.clearAllMocks(); });
 
-  it("reads forward and returns outputs with all fields", async () => {
-    opnsenseClient.getForward.mockResolvedValue({ forward: { server: "8.8.8.8", enabled: "1", type: "dot", port: "853" } });
+  it("reads forward and returns outputs with all fields and setInputs", async () => {
+    opnsenseClient.getForward.mockResolvedValue({ forward: { server: "8.8.8.8", enabled: "1", type: "dot", port: "853", domain: "example.com" } });
 
     const call = makeReadCall("fwd-uuid-1");
     const { err, response } = await callHandler(opnsenseUnboundForwardResource.read, call);
@@ -194,6 +194,15 @@ describe("opnsenseUnboundForward read", () => {
     expect(props.enabled).toBe(true);
     expect(props.type).toBe("dot");
     expect(props.port).toBe(853);
+    expect(props.domain).toBe("example.com");
+
+    // Verify setInputs contains input fields (no uuid)
+    const inputs = response.getInputs().toJavaScript();
+    expect(inputs.server).toBe("8.8.8.8");
+    expect(inputs.enabled).toBe(true);
+    expect(inputs.type).toBe("dot");
+    expect(inputs.domain).toBe("example.com");
+    expect(inputs.uuid).toBeUndefined();
   });
 
   it("returns empty response on 404", async () => {
@@ -268,6 +277,15 @@ describe("opnsenseUnboundForward delete", () => {
 
   it("ignores 404 on delete", async () => {
     opnsenseClient.delForward.mockRejectedValue(new Error("OPNsense API failed (404): not found"));
+
+    const call = makeDeleteCall("gone-uuid");
+    const { err } = await callHandler(opnsenseUnboundForwardResource.delete, call);
+
+    expect(err).toBeNull();
+  });
+
+  it("ignores 'not found' text on delete", async () => {
+    opnsenseClient.delForward.mockRejectedValue(new Error("resource not found"));
 
     const call = makeDeleteCall("gone-uuid");
     const { err } = await callHandler(opnsenseUnboundForwardResource.delete, call);

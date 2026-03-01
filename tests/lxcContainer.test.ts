@@ -305,6 +305,16 @@ describe("lxcContainer read", () => {
     expect(response.getId()).toBeFalsy();
   });
 
+  it("returns empty response on 'not found' text", async () => {
+    homelabClient.getLxcContainer.mockRejectedValue(new Error("resource not found"));
+
+    const call = makeReadCall("gone", { name: "gone", dist: "ubuntu", release: "jammy", arch: "amd64" });
+    const { err, response } = await callHandler(lxcContainerResource.read, call);
+
+    expect(err).toBeNull();
+    expect(response.getId()).toBeFalsy();
+  });
+
   it("returns error on non-404 API failure", async () => {
     homelabClient.getLxcContainer.mockRejectedValue(new Error("connection timeout"));
 
@@ -412,6 +422,16 @@ describe("lxcContainer delete", () => {
   it("ignores 404 on delete (already gone)", async () => {
     homelabClient.stopLxcContainer.mockResolvedValue(undefined);
     homelabClient.deleteLxcContainer.mockRejectedValue(new Error("Homelab API DELETE failed (404): not found"));
+
+    const call = makeDeleteCall("gone");
+    const { err } = await callHandler(lxcContainerResource.delete, call);
+
+    expect(err).toBeNull();
+  });
+
+  it("ignores 'not found' text on delete", async () => {
+    homelabClient.stopLxcContainer.mockResolvedValue(undefined);
+    homelabClient.deleteLxcContainer.mockRejectedValue(new Error("resource not found"));
 
     const call = makeDeleteCall("gone");
     const { err } = await callHandler(lxcContainerResource.delete, call);
