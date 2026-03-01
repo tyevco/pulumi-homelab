@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.3](https://github.com/tyevco/pulumi-homelab/compare/v0.2.2...v0.2.3) (2026-03-01)
+
+
+### Bug Fixes
+
+* use gh release upload instead of softprops/action-gh-release ([7826a40](https://github.com/tyevco/pulumi-homelab/commit/7826a40609f177d2616a60ee18b00db3c6425a42))
+
 ## [0.2.2](https://github.com/tyevco/pulumi-homelab/compare/v0.2.1...v0.2.2) (2026-02-28)
 
 
