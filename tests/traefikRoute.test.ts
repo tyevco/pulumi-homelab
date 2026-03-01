@@ -491,6 +491,16 @@ describe("TraefikStaticConfig read", () => {
     expect(response.getId()).toBeFalsy();
   });
 
+  it("returns empty response on 'not found' text", async () => {
+    homelabClient.getTraefikStatic.mockRejectedValue(new Error("resource not found"));
+
+    const call = makeReadCall("traefik-static");
+    const { err, response } = await callHandler(traefikStaticConfigResource.read, call);
+
+    expect(err).toBeNull();
+    expect(response.getId()).toBeFalsy();
+  });
+
   it("returns error on non-404/503 failure", async () => {
     homelabClient.getTraefikStatic.mockRejectedValue(new Error("connection timeout"));
 

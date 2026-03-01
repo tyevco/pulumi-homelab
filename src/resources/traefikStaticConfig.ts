@@ -113,7 +113,7 @@ export const traefikStaticConfigResource = {
       }));
       callback(null, response);
     } catch (err: any) {
-      if (err.message && (err.message.includes("404") || err.message.includes("503"))) {
+      if (err.message && (err.message.includes("404") || err.message.includes("not found") || err.message.includes("503"))) {
         const response = new providerProto.ReadResponse();
         callback(null, response);
         return;

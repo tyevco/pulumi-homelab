@@ -735,8 +735,8 @@ describe("hostOverrideToApi", () => {
   });
 
   it("passes through string fields", () => {
-    const result = hostOverrideToApi({ hostname: "test", domain: "example.com", rr: "A", server: "1.2.3.4" });
-    expect(result).toEqual({ hostname: "test", domain: "example.com", rr: "A", server: "1.2.3.4" });
+    const result = hostOverrideToApi({ hostname: "test", domain: "example.com", rr: "A", server: "1.2.3.4", mx: "mail.example.com", txtdata: "v=spf1 ~all" });
+    expect(result).toEqual({ hostname: "test", domain: "example.com", rr: "A", server: "1.2.3.4", mx: "mail.example.com", txtdata: "v=spf1 ~all" });
   });
 
   it("omits undefined fields", () => {
@@ -763,9 +763,11 @@ describe("hostOverrideFromApi", () => {
       enabled: true,
       hostname: "myhost",
       domain: "example.com",
-      rr: "A",
+      rr: "MX",
       server: "1.2.3.4",
       mxprio: 10,
+      mx: "mail.example.com",
+      txtdata: "v=spf1 ~all",
       ttl: 300,
       addptr: true,
       description: "Test",
@@ -885,6 +887,16 @@ describe("dnsblToApi", () => {
     expect(result.source_nets).toBe("10.0.0.0/8");
   });
 
+  it("passes through string fields unchanged", () => {
+    const result = dnsblToApi({ type: "dnsbl", lists: "list1", allowlists: "good.com", blocklists: "bad.com", wildcards: "*.ads.com", address: "127.0.0.1" });
+    expect(result.type).toBe("dnsbl");
+    expect(result.lists).toBe("list1");
+    expect(result.allowlists).toBe("good.com");
+    expect(result.blocklists).toBe("bad.com");
+    expect(result.wildcards).toBe("*.ads.com");
+    expect(result.address).toBe("127.0.0.1");
+  });
+
   it("omits undefined fields", () => {
     const result = dnsblToApi({ description: "test" });
     expect(result).toEqual({ description: "test" });
@@ -906,6 +918,16 @@ describe("dnsblFromApi", () => {
   it("maps snake_case to camelCase", () => {
     const result = dnsblFromApi({ source_nets: "10.0.0.0/8" });
     expect(result.sourceNets).toBe("10.0.0.0/8");
+  });
+
+  it("passes through string fields unchanged", () => {
+    const result = dnsblFromApi({ type: "dnsbl", lists: "list1", allowlists: "good.com", blocklists: "bad.com", wildcards: "*.ads.com", address: "127.0.0.1" });
+    expect(result.type).toBe("dnsbl");
+    expect(result.lists).toBe("list1");
+    expect(result.allowlists).toBe("good.com");
+    expect(result.blocklists).toBe("bad.com");
+    expect(result.wildcards).toBe("*.ads.com");
+    expect(result.address).toBe("127.0.0.1");
   });
 
   it("round-trips with dnsblToApi", () => {
