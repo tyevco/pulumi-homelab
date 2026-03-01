@@ -72,6 +72,17 @@ describe("opnsenseAlias check", () => {
     expect(err).toBeNull();
     expect(response.getFailuresList().length).toBe(0);
   });
+
+  it("accepts mac as a valid alias type", async () => {
+    const call = makeCheckCall({ name: "gamelab_mac", type: "mac", content: "98:b7:85:1e:c2:1e" });
+    const { err, response } = await callHandler(opnsenseAliasResource.check, call);
+
+    expect(err).toBeNull();
+    expect(response.getFailuresList().length).toBe(0);
+    const inputs = response.getInputs().toJavaScript();
+    expect(inputs.type).toBe("mac");
+    expect(inputs.content).toBe("98:b7:85:1e:c2:1e");
+  });
 });
 
 describe("opnsenseAlias diff", () => {
@@ -147,6 +158,22 @@ describe("opnsenseAlias create", () => {
     expect(response.getId()).toBe("alias-uuid-1");
     expect(opnsenseClient.withFirewallApply).toHaveBeenCalled();
     expect(opnsenseClient.aliasToApi).toHaveBeenCalledWith(inputs);
+  });
+
+  it("creates mac alias with MAC address content", async () => {
+    opnsenseClient.addAlias.mockResolvedValue({ uuid: "mac-uuid-1" });
+
+    const inputs = { name: "gamelab_mac", type: "mac", content: "98:b7:85:1e:c2:1e" };
+    const call = makeCreateCall(inputs);
+    const { err, response } = await callHandler(opnsenseAliasResource.create, call);
+
+    expect(err).toBeNull();
+    expect(response.getId()).toBe("mac-uuid-1");
+    expect(opnsenseClient.aliasToApi).toHaveBeenCalledWith(inputs);
+    const props = response.getProperties().toJavaScript();
+    expect(props.name).toBe("gamelab_mac");
+    expect(props.type).toBe("mac");
+    expect(props.content).toBe("98:b7:85:1e:c2:1e");
   });
 
   it("returns error on API failure", async () => {

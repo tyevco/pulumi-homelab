@@ -432,7 +432,7 @@
         },
         "type": {
           "type": "string",
-          "description": "Alias type: host, network, port, url, or urltable."
+          "description": "Alias type: host, network, port, mac, url, or urltable."
         },
         "content": {
           "type": "string",
