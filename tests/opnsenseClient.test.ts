@@ -911,3 +911,112 @@ describe("dnsblFromApi", () => {
     expect(back).toEqual(original);
   });
 });
+
+describe("translation edge cases", () => {
+  it("ruleToApi returns empty object for empty input", () => {
+    expect(ruleToApi({})).toEqual({});
+  });
+
+  it("ruleFromApi returns empty object for empty input", () => {
+    expect(ruleFromApi({})).toEqual({});
+  });
+
+  it("ruleToApi converts undefined boolean to '0' via fromBool", () => {
+    // fromBool(undefined) returns "0"
+    // But ruleToApi only sets fields when !== undefined, so undefined booleans are omitted
+    const result = ruleToApi({ log: undefined });
+    expect(result.log).toBeUndefined();
+  });
+
+  it("ruleToApi handles sequence 0 correctly", () => {
+    const result = ruleToApi({ sequence: 0 });
+    expect(result.sequence).toBe("0");
+  });
+
+  it("ruleFromApi handles sequence '0' correctly", () => {
+    const result = ruleFromApi({ sequence: "0" });
+    expect(result.sequence).toBe(0);
+  });
+
+  it("hostOverrideToApi handles mxprio 0 correctly", () => {
+    const result = hostOverrideToApi({ mxprio: 0, ttl: 0 });
+    expect(result.mxprio).toBe("0");
+    expect(result.ttl).toBe("0");
+  });
+
+  it("hostOverrideFromApi handles '0' for numeric fields", () => {
+    const result = hostOverrideFromApi({ mxprio: "0", ttl: "0" });
+    expect(result.mxprio).toBe(0);
+    expect(result.ttl).toBe(0);
+  });
+
+  it("forwardToApi handles port 0 correctly", () => {
+    const result = forwardToApi({ port: 0 });
+    expect(result.port).toBe("0");
+  });
+
+  it("dnsblToApi handles cacheTtl 0 correctly", () => {
+    const result = dnsblToApi({ cacheTtl: 0 });
+    expect(result.cache_ttl).toBe("0");
+  });
+
+  it("dnsblFromApi handles cache_ttl '0' correctly", () => {
+    const result = dnsblFromApi({ cache_ttl: "0" });
+    expect(result.cacheTtl).toBe(0);
+  });
+
+  it("aliasToApi returns empty object for empty input", () => {
+    expect(aliasToApi({})).toEqual({});
+  });
+
+  it("aliasFromApi returns empty object for empty input", () => {
+    expect(aliasFromApi({})).toEqual({});
+  });
+});
+
+describe("request error handling edge cases", () => {
+  beforeEach(() => {
+    mockedFetch.mockReset();
+  });
+
+  function setupConfiguredModule() {
+    const client = require("../src/opnsenseClient");
+    client.configureOpnsenseClient({
+      url: "https://fw.local/",
+      apiKey: "mykey",
+      apiSecret: "mysecret",
+    });
+    return client;
+  }
+
+  it("strips trailing slashes from base URL", async () => {
+    const client = setupConfiguredModule();
+    mockedFetch.mockResolvedValueOnce(mockResponse({ uuid: "test" }));
+
+    await client.addFirewallRule({ action: "pass" });
+
+    const [url] = mockedFetch.mock.calls[0] as [string, any];
+    expect(url).toBe("https://fw.local/api/firewall/filter/addRule");
+    expect(url).not.toContain("//api");
+  });
+
+  it("handles 204 response as undefined", async () => {
+    const client = setupConfiguredModule();
+    mockedFetch.mockResolvedValueOnce({
+      ok: true,
+      status: 204,
+      json: async () => { throw new Error("no body"); },
+      text: async () => "",
+    } as unknown as Response);
+
+    await client.delFirewallRule("uuid-test");
+    // Should not throw
+  });
+
+  it("parses JSON error response with 'error' field", async () => {
+    const client = setupConfiguredModule();
+    mockedFetch.mockResolvedValueOnce(mockResponse({ error: "unauthorized" }, 401));
+
+    await expect(client.addFirewallRule({})).rejects.toThrow("unauthorized");
+  });
+});

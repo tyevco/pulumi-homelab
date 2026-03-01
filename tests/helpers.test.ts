@@ -66,10 +66,50 @@ describe("unwrapSecrets", () => {
     });
   });
 
-  it("passes arrays through without recursing into them", () => {
+  it("passes plain arrays through unchanged", () => {
     const input = { items: [1, 2, 3] };
     const result = unwrapSecrets(input);
     expect(result).toEqual({ items: [1, 2, 3] });
+  });
+
+  it("unwraps secrets inside arrays", () => {
+    const input = {
+      values: [
+        "plain",
+        { [SECRET_SIG]: "x", value: "secret-in-array" },
+        42,
+      ],
+    };
+    const result = unwrapSecrets(input);
+    expect(result).toEqual({ values: ["plain", "secret-in-array", 42] });
+  });
+
+  it("unwraps secrets inside nested arrays of objects", () => {
+    const input = {
+      items: [
+        { name: "a", key: { [SECRET_SIG]: "x", value: "key-a" } },
+        { name: "b", key: { [SECRET_SIG]: "x", value: "key-b" } },
+      ],
+    };
+    const result = unwrapSecrets(input);
+    expect(result).toEqual({
+      items: [
+        { name: "a", key: "key-a" },
+        { name: "b", key: "key-b" },
+      ],
+    });
+  });
+
+  it("handles deeply nested arrays with secrets", () => {
+    const input = {
+      outer: {
+        middle: [
+          [{ [SECRET_SIG]: "x", value: "deep" }],
+        ],
+      },
+    };
+    const result = unwrapSecrets(input);
+    expect(result).toEqual({ outer: { middle: [["deep"]] } });
   });
 
   it("handles mixed plain and secret values", () => {

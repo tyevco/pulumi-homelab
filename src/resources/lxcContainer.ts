@@ -6,6 +6,7 @@ import {
   deleteLxcContainer,
   saveLxcConfig,
   startLxcContainer,
+  stopLxcContainer,
   ensureConfigured,
   LxcContainerInfo,
 } from "../homelabClient";
@@ -227,6 +228,12 @@ export const lxcContainerResource = {
     const id = call.request.getId();
     try {
       ensureConfigured();
+      // Stop the container before deleting (ignore errors if already stopped)
+      try {
+        await stopLxcContainer(id);
+      } catch {
+        // Container may already be stopped or not exist
+      }
       await deleteLxcContainer(id);
     } catch (err: any) {
       if (!err.message || !err.message.includes("404")) {

@@ -33,17 +33,26 @@ export function unwrapSecret(val: any): any {
 }
 
 /**
+ * Recursively unwrap a single value, handling arrays and nested objects.
+ */
+function unwrapDeep(val: any): any {
+  const unwrapped = unwrapSecret(val);
+  if (Array.isArray(unwrapped)) {
+    return unwrapped.map(unwrapDeep);
+  }
+  if (unwrapped && typeof unwrapped === "object") {
+    return unwrapSecrets(unwrapped);
+  }
+  return unwrapped;
+}
+
+/**
  * Recursively unwrap all secret values in an object.
  */
 export function unwrapSecrets(obj: Record<string, any>): Record<string, any> {
   const result: Record<string, any> = {};
   for (const [key, val] of Object.entries(obj)) {
-    const unwrapped = unwrapSecret(val);
-    if (unwrapped && typeof unwrapped === "object" && !Array.isArray(unwrapped)) {
-      result[key] = unwrapSecrets(unwrapped);
-    } else {
-      result[key] = unwrapped;
-    }
+    result[key] = unwrapDeep(val);
   }
   return result;
 }
