@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.3.2](https://github.com/tyevco/pulumi-homelab/compare/v0.3.1...v0.3.2) (2026-03-01)
+
+
+### Bug Fixes
+
+* add enum validation to check handlers ([413ff1b](https://github.com/tyevco/pulumi-homelab/commit/413ff1bf7a45848a45c58e2c46a654321eeeff50))
+* code analysis round 4 - enum validation, autostart fix, test coverage ([d51ab45](https://github.com/tyevco/pulumi-homelab/commit/d51ab452d64a2680df957f7c81886005610b6570))
+* move lxcContainer autostart to REPLACE_FIELDS ([7e51e66](https://github.com/tyevco/pulumi-homelab/commit/7e51e66bede034ac2e91927a38bbd62f54e94804))
+
 ## [0.3.1](https://github.com/tyevco/pulumi-homelab/compare/v0.3.0...v0.3.1) (2026-03-01)
 
 
