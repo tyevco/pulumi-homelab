@@ -34,6 +34,7 @@ import {
   aclFromApi,
   dnsblToApi,
   dnsblFromApi,
+  normalizeGetItemResponse,
 } from "../src/opnsenseClient";
 
 describe("ruleToApi", () => {
@@ -909,6 +910,325 @@ describe("dnsblFromApi", () => {
     const api = dnsblToApi(original);
     const back = dnsblFromApi(api);
     expect(back).toEqual(original);
+  });
+});
+
+describe("normalizeGetItemResponse", () => {
+  it("passes through flat string fields unchanged", () => {
+    const data = { name: "test", description: "desc", enabled: "1" };
+    expect(normalizeGetItemResponse(data)).toEqual(data);
+  });
+
+  it("extracts single selected key from a selected map", () => {
+    const data = {
+      name: "NetBirdPorts",
+      type: {
+        host: { value: "Host(s)", selected: 0 },
+        port: { value: "Port(s)", selected: 1 },
+        urltable: { value: "URL Table (IPs)", selected: 0 },
+        mac: { value: "MAC address", selected: 0 },
+      },
+    };
+    const result = normalizeGetItemResponse(data);
+    expect(result.name).toBe("NetBirdPorts");
+    expect(result.type).toBe("port");
+  });
+
+  it("extracts multiple selected keys joined with newlines", () => {
+    const data = {
+      content: {
+        "portA": { value: "portA", selected: 1 },
+        "portB": { value: "portB", selected: 1 },
+        "portC": { value: "portC", selected: 0 },
+      },
+    };
+    const result = normalizeGetItemResponse(data);
+    expect(result.content).toBe("portA\nportB");
+  });
+
+  it("returns empty string when no keys are selected", () => {
+    const data = {
+      type: {
+        host: { value: "Host(s)", selected: 0 },
+        network: { value: "Network(s)", selected: 0 },
+      },
+    };
+    const result = normalizeGetItemResponse(data);
+    expect(result.type).toBe("");
+  });
+
+  it("passes through arrays unchanged", () => {
+    const data = { categories: [], name: "test" };
+    const result = normalizeGetItemResponse(data);
+    expect(result.categories).toEqual([]);
+  });
+
+  it("passes through null and undefined values", () => {
+    const data = { name: "test", extra: null, missing: undefined };
+    const result = normalizeGetItemResponse(data);
+    expect(result.extra).toBeNull();
+    expect(result.missing).toBeUndefined();
+  });
+
+  it("passes through empty objects (no entries to check)", () => {
+    const data = { meta: {} };
+    const result = normalizeGetItemResponse(data);
+    expect(result.meta).toEqual({});
+  });
+
+  it("handles full alias getItem response", () => {
+    const data = {
+      enabled: "1",
+      name: "NetBirdPorts",
+      type: {
+        host: { value: "Host(s)", selected: 0 },
+        port: { value: "Port(s)", selected: 1 },
+        urltable: { value: "URL Table (IPs)", selected: 0 },
+        mac: { value: "MAC address", selected: 0 },
+      },
+      content: {
+        "10.0.0.1": { value: "10.0.0.1", selected: 1 },
+        "10.0.0.2": { value: "10.0.0.2", selected: 1 },
+      },
+      updatefreq: "1",
+      description: "",
+      categories: [],
+    };
+    const result = normalizeGetItemResponse(data);
+    expect(result.enabled).toBe("1");
+    expect(result.name).toBe("NetBirdPorts");
+    expect(result.type).toBe("port");
+    expect(result.content).toBe("10.0.0.1\n10.0.0.2");
+    expect(result.updatefreq).toBe("1");
+    expect(result.description).toBe("");
+    expect(result.categories).toEqual([]);
+  });
+
+  it("normalizes selected maps then aliasFromApi produces correct output", () => {
+    const raw = {
+      enabled: "1",
+      name: "blocklist",
+      type: {
+        host: { value: "Host(s)", selected: 1 },
+        network: { value: "Network(s)", selected: 0 },
+      },
+      content: {
+        "1.2.3.4": { value: "1.2.3.4", selected: 1 },
+        "5.6.7.8": { value: "5.6.7.8", selected: 1 },
+      },
+      description: "Bad hosts",
+    };
+    const normalized = normalizeGetItemResponse(raw);
+    const result = aliasFromApi(normalized as any);
+    expect(result).toEqual({
+      enabled: true,
+      name: "blocklist",
+      type: "host",
+      content: "1.2.3.4\n5.6.7.8",
+      description: "Bad hosts",
+    });
+  });
+
+  it("normalizes selected maps then ruleFromApi produces correct output", () => {
+    const raw = {
+      action: {
+        pass: { value: "Pass", selected: 1 },
+        block: { value: "Block", selected: 0 },
+        reject: { value: "Reject", selected: 0 },
+      },
+      interface: {
+        lan: { value: "LAN", selected: 1 },
+        wan: { value: "WAN", selected: 0 },
+      },
+      direction: {
+        in: { value: "In", selected: 1 },
+        out: { value: "Out", selected: 0 },
+      },
+      description: "Allow LAN",
+      log: "0",
+      quick: "1",
+      disabled: "0",
+      sequence: "5",
+    };
+    const normalized = normalizeGetItemResponse(raw);
+    const result = ruleFromApi(normalized as any);
+    expect(result.action).toBe("pass");
+    expect(result.interface).toBe("lan");
+    expect(result.direction).toBe("in");
+    expect(result.description).toBe("Allow LAN");
+    expect(result.log).toBe(false);
+    expect(result.quick).toBe(true);
+    expect(result.sequence).toBe(5);
+  });
+});
+
+describe("get* functions normalize getItem responses", () => {
+  beforeEach(() => {
+    mockedFetch.mockReset();
+  });
+
+  function setupConfiguredModule() {
+    const client = require("../src/opnsenseClient");
+    client.configureOpnsenseClient({
+      url: "https://fw.local",
+      apiKey: "mykey",
+      apiSecret: "mysecret",
+    });
+    return client;
+  }
+
+  it("getAlias normalizes selected map fields", async () => {
+    const client = setupConfiguredModule();
+    mockedFetch.mockResolvedValueOnce(mockResponse({
+      alias: {
+        enabled: "1",
+        name: "NetBirdPorts",
+        type: {
+          host: { value: "Host(s)", selected: 0 },
+          port: { value: "Port(s)", selected: 1 },
+        },
+        content: {
+          "10.0.0.1": { value: "10.0.0.1", selected: 1 },
+          "10.0.0.2": { value: "10.0.0.2", selected: 1 },
+        },
+        description: "",
+      },
+    }));
+
+    const result = await client.getAlias("test-uuid");
+
+    expect(result.alias.type).toBe("port");
+    expect(result.alias.content).toBe("10.0.0.1\n10.0.0.2");
+    expect(result.alias.name).toBe("NetBirdPorts");
+    expect(result.alias.enabled).toBe("1");
+  });
+
+  it("getAlias passes through already-flat responses", async () => {
+    const client = setupConfiguredModule();
+    mockedFetch.mockResolvedValueOnce(mockResponse({
+      alias: { name: "test", type: "host", content: "1.2.3.4", enabled: "1" },
+    }));
+
+    const result = await client.getAlias("test-uuid");
+
+    expect(result.alias.type).toBe("host");
+    expect(result.alias.content).toBe("1.2.3.4");
+  });
+
+  it("getFirewallRule normalizes selected map fields", async () => {
+    const client = setupConfiguredModule();
+    mockedFetch.mockResolvedValueOnce(mockResponse({
+      rule: {
+        action: {
+          pass: { value: "Pass", selected: 1 },
+          block: { value: "Block", selected: 0 },
+        },
+        interface: {
+          lan: { value: "LAN", selected: 0 },
+          wan: { value: "WAN", selected: 1 },
+        },
+        description: "Test rule",
+        log: "0",
+      },
+    }));
+
+    const result = await client.getFirewallRule("rule-uuid");
+
+    expect(result.rule.action).toBe("pass");
+    expect(result.rule.interface).toBe("wan");
+    expect(result.rule.description).toBe("Test rule");
+    expect(result.rule.log).toBe("0");
+  });
+
+  it("getHostOverride normalizes selected map fields", async () => {
+    const client = setupConfiguredModule();
+    mockedFetch.mockResolvedValueOnce(mockResponse({
+      hostoverride: {
+        hostname: "test",
+        domain: "example.com",
+        rr: {
+          A: { value: "A (IPv4)", selected: 1 },
+          AAAA: { value: "AAAA (IPv6)", selected: 0 },
+          MX: { value: "MX", selected: 0 },
+        },
+        enabled: "1",
+        server: "1.2.3.4",
+      },
+    }));
+
+    const result = await client.getHostOverride("ho-uuid");
+
+    expect(result.hostoverride.rr).toBe("A");
+    expect(result.hostoverride.hostname).toBe("test");
+    expect(result.hostoverride.enabled).toBe("1");
+  });
+
+  it("getForward normalizes selected map fields", async () => {
+    const client = setupConfiguredModule();
+    mockedFetch.mockResolvedValueOnce(mockResponse({
+      forward: {
+        type: {
+          forward: { value: "Forward", selected: 0 },
+          dot: { value: "DNS-over-TLS", selected: 1 },
+        },
+        server: "1.1.1.1",
+        enabled: "1",
+      },
+    }));
+
+    const result = await client.getForward("fwd-uuid");
+
+    expect(result.forward.type).toBe("dot");
+    expect(result.forward.server).toBe("1.1.1.1");
+  });
+
+  it("getAcl normalizes selected map fields", async () => {
+    const client = setupConfiguredModule();
+    mockedFetch.mockResolvedValueOnce(mockResponse({
+      acl: {
+        name: "myacl",
+        action: {
+          allow: { value: "Allow", selected: 1 },
+          deny: { value: "Deny", selected: 0 },
+          refuse: { value: "Refuse", selected: 0 },
+        },
+        networks: {
+          "10.0.0.0/8": { value: "10.0.0.0/8", selected: 1 },
+          "192.168.0.0/16": { value: "192.168.0.0/16", selected: 1 },
+        },
+        enabled: "1",
+      },
+    }));
+
+    const result = await client.getAcl("acl-uuid");
+
+    expect(result.acl.action).toBe("allow");
+    expect(result.acl.networks).toBe("10.0.0.0/8\n192.168.0.0/16");
+    expect(result.acl.name).toBe("myacl");
+  });
+
+  it("getDnsbl normalizes selected map fields", async () => {
+    const client = setupConfiguredModule();
+    mockedFetch.mockResolvedValueOnce(mockResponse({
+      dnsbl: {
+        type: {
+          dnsbl: { value: "DNSBL", selected: 1 },
+          other: { value: "Other", selected: 0 },
+        },
+        lists: {
+          "list1": { value: "List 1", selected: 1 },
+          "list2": { value: "List 2", selected: 1 },
+        },
+        enabled: "1",
+        description: "blocklist",
+      },
+    }));
+
+    const result = await client.getDnsbl("dnsbl-uuid");
+
+    expect(result.dnsbl.type).toBe("dnsbl");
+    expect(result.dnsbl.lists).toBe("list1\nlist2");
+    expect(result.dnsbl.description).toBe("blocklist");
   });
 });
 

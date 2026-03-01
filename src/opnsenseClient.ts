@@ -74,6 +74,35 @@ async function request<T>(method: string, path: string, body?: any): Promise<T> 
   return res.json();
 }
 
+// OPNsense getItem response normalization
+// getItem endpoints return {key: {value, selected}} objects for fields with
+// predefined choices, while searchItem returns flat strings. This normalizes
+// getItem responses so FromApi functions always see flat strings.
+
+function isSelectedMap(val: any): boolean {
+  if (!val || typeof val !== "object" || Array.isArray(val)) return false;
+  const entries = Object.values(val);
+  if (entries.length === 0) return false;
+  return entries.every((v: any) => v && typeof v === "object" && "selected" in v);
+}
+
+function extractSelected(val: Record<string, { value: string; selected: number }>): string {
+  return Object.entries(val)
+    .filter(([, v]) => v.selected === 1)
+    .map(([k]) => k)
+    .join("\n");
+}
+
+export function normalizeGetItemResponse<T extends Record<string, any>>(data: T): T {
+  const result = { ...data };
+  for (const [key, val] of Object.entries(result)) {
+    if (isSelectedMap(val)) {
+      (result as any)[key] = extractSelected(val);
+    }
+  }
+  return result;
+}
+
 // Boolean translation helpers
 function toBool(val: string | undefined): boolean {
   return val === "1";
@@ -152,8 +181,8 @@ export async function addFirewallRule(rule: FirewallRuleData): Promise<{ uuid: s
 }
 
 export async function getFirewallRule(uuid: string): Promise<{ rule: FirewallRuleData }> {
-  const res = await request<{ rule: FirewallRuleData }>("GET", `/api/firewall/filter/getRule/${uuid}`);
-  return res;
+  const res = await request<{ rule: any }>("GET", `/api/firewall/filter/getRule/${uuid}`);
+  return { ...res, rule: normalizeGetItemResponse(res.rule) };
 }
 
 export async function setFirewallRule(uuid: string, rule: FirewallRuleData): Promise<void> {
@@ -179,8 +208,8 @@ export async function addAlias(alias: AliasData): Promise<{ uuid: string }> {
 }
 
 export async function getAlias(uuid: string): Promise<{ alias: AliasData }> {
-  const res = await request<{ alias: AliasData }>("GET", `/api/firewall/alias/getItem/${uuid}`);
-  return res;
+  const res = await request<{ alias: any }>("GET", `/api/firewall/alias/getItem/${uuid}`);
+  return { ...res, alias: normalizeGetItemResponse(res.alias) };
 }
 
 export async function setAlias(uuid: string, alias: AliasData): Promise<void> {
@@ -219,8 +248,8 @@ export async function addHostOverride(hostoverride: HostOverrideData): Promise<{
 }
 
 export async function getHostOverride(uuid: string): Promise<{ hostoverride: HostOverrideData }> {
-  const res = await request<{ hostoverride: HostOverrideData }>("GET", `/api/unbound/settings/getHostOverride/${uuid}`);
-  return res;
+  const res = await request<{ hostoverride: any }>("GET", `/api/unbound/settings/getHostOverride/${uuid}`);
+  return { ...res, hostoverride: normalizeGetItemResponse(res.hostoverride) };
 }
 
 export async function setHostOverride(uuid: string, hostoverride: HostOverrideData): Promise<void> {
@@ -250,8 +279,8 @@ export async function addForward(forward: ForwardData): Promise<{ uuid: string }
 }
 
 export async function getForward(uuid: string): Promise<{ forward: ForwardData }> {
-  const res = await request<{ forward: ForwardData }>("GET", `/api/unbound/settings/getForward/${uuid}`);
-  return res;
+  const res = await request<{ forward: any }>("GET", `/api/unbound/settings/getForward/${uuid}`);
+  return { ...res, forward: normalizeGetItemResponse(res.forward) };
 }
 
 export async function setForward(uuid: string, forward: ForwardData): Promise<void> {
@@ -277,8 +306,8 @@ export async function addAcl(acl: AclData): Promise<{ uuid: string }> {
 }
 
 export async function getAcl(uuid: string): Promise<{ acl: AclData }> {
-  const res = await request<{ acl: AclData }>("GET", `/api/unbound/settings/getAcl/${uuid}`);
-  return res;
+  const res = await request<{ acl: any }>("GET", `/api/unbound/settings/getAcl/${uuid}`);
+  return { ...res, acl: normalizeGetItemResponse(res.acl) };
 }
 
 export async function setAcl(uuid: string, acl: AclData): Promise<void> {
@@ -310,8 +339,8 @@ export async function addDnsbl(dnsbl: DnsblData): Promise<{ uuid: string }> {
 }
 
 export async function getDnsbl(uuid: string): Promise<{ dnsbl: DnsblData }> {
-  const res = await request<{ dnsbl: DnsblData }>("GET", `/api/unbound/settings/getDnsbl/${uuid}`);
-  return res;
+  const res = await request<{ dnsbl: any }>("GET", `/api/unbound/settings/getDnsbl/${uuid}`);
+  return { ...res, dnsbl: normalizeGetItemResponse(res.dnsbl) };
 }
 
 export async function setDnsbl(uuid: string, dnsbl: DnsblData): Promise<void> {
