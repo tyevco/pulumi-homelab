@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.3.1](https://github.com/tyevco/pulumi-homelab/compare/v0.3.0...v0.3.1) (2026-03-01)
+
+
+### Bug Fixes
+
+* normalize OPNsense getItem response format for read/import ([9f2f180](https://github.com/tyevco/pulumi-homelab/commit/9f2f18084d9c816fa27bb0cd74cccfa397200706))
+* OPNsense API normalization, diff stability, and edge cases ([fbfb0c4](https://github.com/tyevco/pulumi-homelab/commit/fbfb0c4c40e8cc8bd840d35e3eced9013e972a86))
+* prevent spurious diffs between undefined and empty string ([155b14b](https://github.com/tyevco/pulumi-homelab/commit/155b14b754910bdd27d4206f5110d04c49ac4d4b))
+* use nullish coalescing for opnsenseInsecure config ([6a15806](https://github.com/tyevco/pulumi-homelab/commit/6a158063a9c88a368f599aab62e262129b7cf765))
+* use safeParseInt to prevent NaN from empty/invalid numeric strings ([e6bcc78](https://github.com/tyevco/pulumi-homelab/commit/e6bcc78715e73728a7e9b5f03efb3613037ba931))
+
 ## [0.3.0](https://github.com/tyevco/pulumi-homelab/compare/v0.2.3...v0.3.0) (2026-03-01)
 
 
