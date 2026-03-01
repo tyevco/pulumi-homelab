@@ -45,12 +45,18 @@ function fetchOptions(): Record<string, any> {
 
 async function request<T>(method: string, path: string, body?: any): Promise<T> {
   const url = `${baseUrl()}${path}`;
+  const headers: Record<string, string> = {
+    "Authorization": authHeader(),
+  };
+  // Only set Content-Type when sending a body — OPNsense's API framework
+  // rejects GET requests with Content-Type: application/json and no body
+  // as "Invalid JSON syntax".
+  if (body) {
+    headers["Content-Type"] = "application/json";
+  }
   const res = await fetch(url, {
     method,
-    headers: {
-      "Authorization": authHeader(),
-      "Content-Type": "application/json",
-    },
+    headers,
     body: body ? JSON.stringify(body) : undefined,
     ...fetchOptions(),
   });
