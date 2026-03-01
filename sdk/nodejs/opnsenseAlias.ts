@@ -6,7 +6,7 @@ const PLUGIN_DOWNLOAD_URL = "github://api.github.com/tyevco/pulumi-homelab";
 export interface OpnsenseAliasArgs {
   /** The alias name. Must be unique. */
   name: pulumi.Input<string>;
-  /** Alias type: host, network, port, url, or urltable. */
+  /** Alias type: host, network, port, mac, url, or urltable. */
   type: pulumi.Input<string>;
   /** Alias content (newline-separated entries, e.g., IP addresses, networks, ports, or URLs). */
   content?: pulumi.Input<string>;

@@ -25,7 +25,7 @@ export const opnsenseAliasResource = {
       failures.push(makeCheckFailure("name", "name is required"));
     }
     if (!inputs.type) {
-      failures.push(makeCheckFailure("type", "type is required (host, network, port, url, or urltable)"));
+      failures.push(makeCheckFailure("type", "type is required (host, network, port, mac, url, or urltable)"));
     }
 
     // Apply defaults
