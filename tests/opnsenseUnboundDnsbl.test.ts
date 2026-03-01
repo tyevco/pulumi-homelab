@@ -122,6 +122,25 @@ describe("opnsenseUnboundDnsbl diff", () => {
 
     expect(response.getChanges()).toBe(providerProto.DiffResponse.DiffChanges.DIFF_NONE);
   });
+
+  it("detects change in multiline lists field", async () => {
+    const olds = { description: "test", lists: "list1\nlist2" };
+    const news = { description: "test", lists: "list1\nlist3" };
+    const call = makeDiffCall(olds, news);
+    const { response } = await callHandler(opnsenseUnboundDnsblResource.diff, call);
+
+    expect(response.getChanges()).toBe(providerProto.DiffResponse.DiffChanges.DIFF_SOME);
+    expect(response.getDiffsList()).toEqual(["lists"]);
+  });
+
+  it("treats missing and empty string as equivalent (no spurious diff)", async () => {
+    const olds = { description: "test" };
+    const news = { description: "test", lists: "", sourceNets: "" };
+    const call = makeDiffCall(olds, news);
+    const { response } = await callHandler(opnsenseUnboundDnsblResource.diff, call);
+
+    expect(response.getChanges()).toBe(providerProto.DiffResponse.DiffChanges.DIFF_NONE);
+  });
 });
 
 describe("opnsenseUnboundDnsbl create", () => {

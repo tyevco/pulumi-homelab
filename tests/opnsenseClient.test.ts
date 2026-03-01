@@ -290,6 +290,21 @@ describe("withFirewallApply", () => {
     // Only savepoint was called, not apply
     expect(mockedFetch).toHaveBeenCalledTimes(1);
   });
+
+  it("propagates applyChanges error after successful fn", async () => {
+    const client = setupConfiguredModule();
+
+    mockedFetch
+      .mockResolvedValueOnce(mockResponse({ revision: "rev-789" })) // savepoint
+      .mockResolvedValueOnce(mockResponse({ status: "failed" }, 500)); // apply fails
+
+    await expect(
+      client.withFirewallApply(async () => "ok"),
+    ).rejects.toThrow();
+
+    // savepoint + apply were called, but NOT cancelRollback
+    expect(mockedFetch).toHaveBeenCalledTimes(2);
+  });
 });
 
 describe("CRUD functions", () => {
