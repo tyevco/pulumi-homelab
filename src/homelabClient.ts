@@ -5,8 +5,6 @@ export interface HomelabClientConfig {
   apiKey: string;
 }
 
-export type DockgeClientConfig = HomelabClientConfig;
-
 export interface ContainerInfo {
   name: string;
   service: string;
@@ -28,15 +26,11 @@ export interface StackInfo {
   containers: ContainerInfo[];
 }
 
-export type DockgeStackInfo = StackInfo;
-
 let currentConfig: HomelabClientConfig | null = null;
 
 export function configureClient(config: HomelabClientConfig): void {
   currentConfig = config;
 }
-
-export const configureDockgeClient = configureClient;
 
 export function ensureConfigured(): HomelabClientConfig {
   if (!currentConfig) {
@@ -93,7 +87,7 @@ async function request<T>(method: string, path: string, body?: any): Promise<T> 
     } catch {
       message = text;
     }
-    throw new Error(`Dockge API ${method} ${path} failed (${res.status}): ${message}`);
+    throw new Error(`Homelab API ${method} ${path} failed (${res.status}): ${message}`);
   }
 
   return res.json();

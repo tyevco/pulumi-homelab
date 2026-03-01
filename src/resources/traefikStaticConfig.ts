@@ -1,6 +1,6 @@
 import * as grpc from "@grpc/grpc-js";
 import { structToObject, objectToStruct, makeCheckFailure, GrpcCallback, GrpcCall } from "../helpers";
-import { getTraefikStatic, putTraefikStatic, ensureConfigured } from "../dockgeClient";
+import { getTraefikStatic, putTraefikStatic, ensureConfigured } from "../homelabClient";
 import { diffYaml } from "../composeDiff";
 import YAML from "yaml";
 

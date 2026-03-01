@@ -8,7 +8,7 @@ import {
   startLxcContainer,
   ensureConfigured,
   LxcContainerInfo,
-} from "../dockgeClient";
+} from "../homelabClient";
 
 const providerProto = require("@pulumi/pulumi/proto/provider_pb");
 const emptyProto = require("google-protobuf/google/protobuf/empty_pb");

@@ -23,7 +23,6 @@ interface ResourceHandler {
 
 const resourceHandlers: Record<string, ResourceHandler> = {
   "homelab:index:Stack": stackResource,
-  "dockge:index:DockgeStack": stackResource, // backward compat
   "homelab:index:TraefikStaticConfig": traefikStaticConfigResource,
   "homelab:index:TraefikRoute": traefikRouteResource,
   "homelab:index:OpnsenseFirewallRule": opnsenseFirewallRuleResource,

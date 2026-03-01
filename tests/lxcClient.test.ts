@@ -34,7 +34,7 @@ describe("LXC client API", () => {
   });
 
   function setupConfiguredModule() {
-    const client = require("../src/dockgeClient");
+    const client = require("../src/homelabClient");
     client.configureClient({
       url: "https://homelab.local",
       apiKey: "my-api-key",

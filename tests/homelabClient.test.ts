@@ -31,14 +31,14 @@ function mock204() {
 describe("configureClient / ensureConfigured", () => {
   it("throws when not configured", () => {
     jest.isolateModules(() => {
-      const { ensureConfigured } = require("../src/dockgeClient");
+      const { ensureConfigured } = require("../src/homelabClient");
       expect(() => ensureConfigured()).toThrow("Homelab provider not configured");
     });
   });
 
   it("returns config after configuring", () => {
     jest.isolateModules(() => {
-      const { configureClient, ensureConfigured } = require("../src/dockgeClient");
+      const { configureClient, ensureConfigured } = require("../src/homelabClient");
       const config = { url: "https://homelab.local", apiKey: "test-key" };
       configureClient(config);
       expect(ensureConfigured()).toEqual(config);
@@ -46,13 +46,13 @@ describe("configureClient / ensureConfigured", () => {
   });
 });
 
-describe("Dockge client API", () => {
+describe("Homelab client API", () => {
   beforeEach(() => {
     mockedFetch.mockReset();
   });
 
   function setupConfiguredModule() {
-    const client = require("../src/dockgeClient");
+    const client = require("../src/homelabClient");
     client.configureClient({
       url: "https://homelab.local",
       apiKey: "my-api-key",
@@ -232,7 +232,7 @@ describe("Dockge client API", () => {
       mockedFetch.mockResolvedValueOnce(mockResponse({ error: "Stack not found" }, 404));
 
       await expect(client.getStack("missing")).rejects.toThrow(
-        "Dockge API GET /api/stacks/missing failed (404): Stack not found"
+        "Homelab API GET /api/stacks/missing failed (404): Stack not found"
       );
     });
 
@@ -259,7 +259,7 @@ describe("Dockge client API", () => {
 
   describe("URL trailing slash handling", () => {
     it("strips trailing slashes from base URL", async () => {
-      const client = require("../src/dockgeClient");
+      const client = require("../src/homelabClient");
       client.configureClient({
         url: "https://homelab.local///",
         apiKey: "key",

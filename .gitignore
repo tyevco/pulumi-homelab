@@ -3,7 +3,6 @@ dist/
 *.js
 *.d.ts
 *.js.map
-!pulumi-resource-dockge
 !pulumi-resource-homelab
 !jest.config.js
 sdk/nodejs/*.js
