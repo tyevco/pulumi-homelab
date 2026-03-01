@@ -236,6 +236,22 @@ describe("Homelab client API", () => {
       );
     });
 
+    it("throws on non-2xx with JSON message field", async () => {
+      const client = setupConfiguredModule();
+      mockedFetch.mockResolvedValueOnce(mockResponse({ message: "Unauthorized" }, 401));
+
+      await expect(client.getStack("test")).rejects.toThrow(
+        "Homelab API GET /api/stacks/test failed (401): Unauthorized"
+      );
+    });
+
+    it("prefers message over error when both present", async () => {
+      const client = setupConfiguredModule();
+      mockedFetch.mockResolvedValueOnce(mockResponse({ message: "Primary", error: "Secondary" }, 400));
+
+      await expect(client.getStack("test")).rejects.toThrow("Primary");
+    });
+
     it("throws on non-2xx with non-JSON error body", async () => {
       const client = setupConfiguredModule();
       mockedFetch.mockResolvedValueOnce({
