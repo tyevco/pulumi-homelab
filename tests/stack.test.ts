@@ -557,6 +557,22 @@ describe("stack update", () => {
     expect(homelabClient.updateStack).toHaveBeenCalled();
   });
 
+  it("preserves explicit empty envFile in output after update", async () => {
+    // Server still reports old envFile, but user explicitly cleared it
+    const stackInfo = { name: "web", status: "running", composeYaml: "version: '3'", envFile: "FOO=bar", containers: [] };
+    homelabClient.updateStack.mockResolvedValue(stackInfo);
+    homelabClient.getStack.mockResolvedValue(stackInfo);
+
+    const olds = { name: "web", composeYaml: "version: '3'", running: true, envFile: "FOO=bar" };
+    const news = { name: "web", composeYaml: "version: '3'", running: true, envFile: "" };
+    const call = makeUpdateCall("web", olds, news);
+    const { err, response } = await callHandler(stackResource.update, call);
+
+    expect(err).toBeNull();
+    const props = response.getProperties().toJavaScript();
+    expect(props.envFile).toBe("");
+  });
+
   it("returns error on API failure", async () => {
     homelabClient.updateStack.mockRejectedValue(new Error("server error"));
 

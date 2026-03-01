@@ -30,8 +30,8 @@ function setDetailedDiff(
 function stackToOutputs(info: StackInfo, inputs: Record<string, any>): Record<string, any> {
   return {
     name: info.name,
-    composeYaml: inputs.composeYaml || info.composeYaml,
-    envFile: inputs.envFile || info.envFile || "",
+    composeYaml: inputs.composeYaml !== undefined ? inputs.composeYaml : info.composeYaml,
+    envFile: inputs.envFile !== undefined ? inputs.envFile : (info.envFile || ""),
     composeOverride: inputs.composeOverride !== undefined ? inputs.composeOverride : (info.composeOverride || ""),
     autostart: inputs.autostart !== undefined ? inputs.autostart : (info.autostart || false),
     displayName: inputs.displayName !== undefined ? inputs.displayName : (info.displayName || ""),
