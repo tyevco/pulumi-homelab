@@ -180,7 +180,7 @@ describe("opnsenseUnboundHostOverride create", () => {
 describe("opnsenseUnboundHostOverride read", () => {
   beforeEach(() => { jest.clearAllMocks(); });
 
-  it("reads host override and returns outputs with all fields", async () => {
+  it("reads host override and returns outputs with all fields and setInputs", async () => {
     opnsenseClient.getHostOverride.mockResolvedValue({ hostoverride: { hostname: "myhost", domain: "example.com", enabled: "1", rr: "A", server: "1.2.3.4" } });
 
     const call = makeReadCall("ho-uuid-1");
@@ -195,6 +195,15 @@ describe("opnsenseUnboundHostOverride read", () => {
     expect(props.enabled).toBe(true);
     expect(props.rr).toBe("A");
     expect(props.server).toBe("1.2.3.4");
+
+    // Verify setInputs contains input fields (no uuid)
+    const inputs = response.getInputs().toJavaScript();
+    expect(inputs.hostname).toBe("myhost");
+    expect(inputs.domain).toBe("example.com");
+    expect(inputs.enabled).toBe(true);
+    expect(inputs.rr).toBe("A");
+    expect(inputs.server).toBe("1.2.3.4");
+    expect(inputs.uuid).toBeUndefined();
   });
 
   it("returns empty response on 404", async () => {

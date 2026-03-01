@@ -188,8 +188,8 @@ describe("opnsenseUnboundDnsbl create", () => {
 describe("opnsenseUnboundDnsbl read", () => {
   beforeEach(() => { jest.clearAllMocks(); });
 
-  it("reads DNSBL and returns outputs with all fields", async () => {
-    opnsenseClient.getDnsbl.mockResolvedValue({ dnsbl: { description: "My blocklist", enabled: "1", cache_ttl: "72000" } });
+  it("reads DNSBL and returns outputs with all fields and setInputs", async () => {
+    opnsenseClient.getDnsbl.mockResolvedValue({ dnsbl: { description: "My blocklist", enabled: "1", cache_ttl: "72000", lists: "list1\nlist2", source_nets: "10.0.0.0/8" } });
 
     const call = makeReadCall("dnsbl-uuid-1");
     const { err, response } = await callHandler(opnsenseUnboundDnsblResource.read, call);
@@ -201,6 +201,17 @@ describe("opnsenseUnboundDnsbl read", () => {
     expect(props.description).toBe("My blocklist");
     expect(props.enabled).toBe(true);
     expect(props.cacheTtl).toBe(72000);
+    expect(props.lists).toBe("list1\nlist2");
+    expect(props.sourceNets).toBe("10.0.0.0/8");
+
+    // Verify setInputs contains input fields (no uuid)
+    const inputs = response.getInputs().toJavaScript();
+    expect(inputs.description).toBe("My blocklist");
+    expect(inputs.enabled).toBe(true);
+    expect(inputs.cacheTtl).toBe(72000);
+    expect(inputs.lists).toBe("list1\nlist2");
+    expect(inputs.sourceNets).toBe("10.0.0.0/8");
+    expect(inputs.uuid).toBeUndefined();
   });
 
   it("returns empty response on 404", async () => {

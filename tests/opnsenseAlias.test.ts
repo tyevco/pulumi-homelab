@@ -229,8 +229,10 @@ describe("opnsenseAlias read", () => {
     jest.clearAllMocks();
   });
 
-  it("reads alias and returns outputs with uuid", async () => {
-    opnsenseClient.getAlias.mockResolvedValue({ alias: { name: "blocklist", type: "host", enabled: "1" } });
+  it("reads alias and returns outputs with uuid and setInputs", async () => {
+    opnsenseClient.getAlias.mockResolvedValue({
+      alias: { name: "blocklist", type: "host", enabled: "1", content: "10.0.0.1", description: "My blocklist" },
+    });
 
     const call = makeReadCall("alias-uuid-1");
     const { err, response } = await callHandler(opnsenseAliasResource.read, call);
@@ -240,6 +242,18 @@ describe("opnsenseAlias read", () => {
     const props = response.getProperties().toJavaScript();
     expect(props.uuid).toBe("alias-uuid-1");
     expect(props.name).toBe("blocklist");
+    expect(props.type).toBe("host");
+    expect(props.enabled).toBe(true);
+    expect(props.content).toBe("10.0.0.1");
+    expect(props.description).toBe("My blocklist");
+
+    // Verify setInputs contains input fields (no uuid)
+    const inputs = response.getInputs().toJavaScript();
+    expect(inputs.name).toBe("blocklist");
+    expect(inputs.type).toBe("host");
+    expect(inputs.enabled).toBe(true);
+    expect(inputs.content).toBe("10.0.0.1");
+    expect(inputs.uuid).toBeUndefined();
   });
 
   it("reads alias with getItem selected-map format", async () => {
