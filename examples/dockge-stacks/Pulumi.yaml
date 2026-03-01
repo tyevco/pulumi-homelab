@@ -1,3 +1,0 @@
-name: dockge-stacks
-runtime: nodejs
-description: Manage Dockge stacks with Pulumi

@@ -3,11 +3,12 @@
   "displayName": "Homelab",
   "version": "0.2.3",
   "pluginDownloadURL": "github://api.github.com/tyevco/pulumi-homelab",
-  "description": "A Pulumi provider for managing homelab infrastructure including Dockge stacks, Traefik routes, and OPNsense firewall rules",
+  "description": "A Pulumi provider for managing homelab infrastructure including Docker Compose stacks, LXC containers, Traefik routes, and OPNsense firewall rules",
   "keywords": [
     "pulumi",
     "homelab",
-    "dockge",
+    "docker-compose",
+    "lxc",
     "opnsense",
     "firewall",
     "category/infrastructure"
@@ -17,11 +18,11 @@
     "variables": {
       "url": {
         "type": "string",
-        "description": "The URL of the Dockge server (e.g., http://192.168.1.100:5001)"
+        "description": "The URL of the homelab server (e.g., http://192.168.1.100:5001)"
       },
       "apiKey": {
         "type": "string",
-        "description": "API key for authenticating with the Dockge REST API",
+        "description": "API key for authenticating with the homelab REST API",
         "secret": true
       },
       "opnsenseUrl": {
@@ -50,11 +51,11 @@
     "inputProperties": {
       "url": {
         "type": "string",
-        "description": "The URL of the Dockge server (e.g., http://192.168.1.100:5001)"
+        "description": "The URL of the homelab server (e.g., http://192.168.1.100:5001)"
       },
       "apiKey": {
         "type": "string",
-        "description": "API key for authenticating with the Dockge REST API",
+        "description": "API key for authenticating with the homelab REST API",
         "secret": true
       },
       "opnsenseUrl": {
@@ -79,11 +80,11 @@
     "properties": {
       "url": {
         "type": "string",
-        "description": "The URL of the Dockge server"
+        "description": "The URL of the homelab server"
       },
       "apiKey": {
         "type": "string",
-        "description": "API key for authenticating with the Dockge REST API",
+        "description": "API key for authenticating with the homelab REST API",
         "secret": true
       },
       "opnsenseUrl": {
@@ -147,11 +148,11 @@
   },
   "resources": {
     "homelab:index:Stack": {
-      "description": "Manages a Docker Compose stack on a Dockge server via the REST API. Supports creating, updating, starting, stopping, and deleting stacks.",
+      "description": "Manages a Docker Compose stack on a homelab server via the REST API. Supports creating, updating, starting, stopping, and deleting stacks.",
       "inputProperties": {
         "name": {
           "type": "string",
-          "description": "The stack name. Must be unique on the Dockge server."
+          "description": "The stack name. Must be unique on the homelab server."
         },
         "composeYaml": {
           "type": "string",
@@ -231,7 +232,7 @@
       ]
     },
     "homelab:index:TraefikStaticConfig": {
-      "description": "Manages the Traefik static configuration file (traefik.yml) via the Dockge REST API.",
+      "description": "Manages the Traefik static configuration file (traefik.yml) via the homelab REST API.",
       "inputProperties": {
         "content": {
           "type": "string",
@@ -256,7 +257,7 @@
       ]
     },
     "homelab:index:TraefikRoute": {
-      "description": "Manages a Traefik dynamic route configuration file via the Dockge REST API.",
+      "description": "Manages a Traefik dynamic route configuration file via the homelab REST API.",
       "inputProperties": {
         "name": {
           "type": "string",
@@ -842,6 +843,90 @@
       "required": [
         "uuid",
         "description"
+      ]
+    },
+    "homelab:index:LxcContainer": {
+      "description": "Manages an LXC container on a homelab server via the REST API. Supports creating, configuring, starting, stopping, and deleting containers.",
+      "inputProperties": {
+        "name": {
+          "type": "string",
+          "description": "The container name. Must match ^[a-z0-9_.-]+$."
+        },
+        "dist": {
+          "type": "string",
+          "description": "The Linux distribution (e.g., ubuntu, debian, alpine)."
+        },
+        "release": {
+          "type": "string",
+          "description": "The distribution release (e.g., jammy, bookworm)."
+        },
+        "arch": {
+          "type": "string",
+          "description": "The architecture (e.g., amd64, arm64)."
+        },
+        "config": {
+          "type": "string",
+          "description": "Optional LXC container configuration file content."
+        },
+        "autostart": {
+          "type": "boolean",
+          "description": "Whether the container should autostart (default: false).",
+          "default": false
+        }
+      },
+      "requiredInputs": [
+        "name",
+        "dist",
+        "release",
+        "arch"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The container name."
+        },
+        "dist": {
+          "type": "string",
+          "description": "The Linux distribution."
+        },
+        "release": {
+          "type": "string",
+          "description": "The distribution release."
+        },
+        "arch": {
+          "type": "string",
+          "description": "The architecture."
+        },
+        "config": {
+          "type": "string",
+          "description": "The LXC container configuration file content."
+        },
+        "autostart": {
+          "type": "boolean",
+          "description": "Whether the container autostarts."
+        },
+        "status": {
+          "type": "integer",
+          "description": "The current container status code."
+        },
+        "ip": {
+          "type": "string",
+          "description": "The container's IP address."
+        },
+        "pid": {
+          "type": "integer",
+          "description": "The container's process ID."
+        },
+        "memory": {
+          "type": "string",
+          "description": "The container's memory usage."
+        }
+      },
+      "required": [
+        "name",
+        "dist",
+        "release",
+        "arch"
       ]
     }
   },

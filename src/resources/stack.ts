@@ -9,7 +9,7 @@ import {
   stopStack,
   ensureConfigured,
   StackInfo,
-} from "../dockgeClient";
+} from "../homelabClient";
 import { diffCompose } from "../composeDiff";
 import { diffEnvFile } from "../envDiff";
 

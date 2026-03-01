@@ -13,10 +13,8 @@ export interface ContainerInfo {
   ports: string[];
 }
 
-export type DockgeContainerInfo = ContainerInfo;
-
 export interface StackArgs {
-  /** The stack name. Must be unique on the Dockge server. */
+  /** The stack name. Must be unique on the homelab server. */
   name: pulumi.Input<string>;
   /** The Docker Compose YAML content for this stack. */
   composeYaml: pulumi.Input<string>;
@@ -32,10 +30,8 @@ export interface StackArgs {
   running?: pulumi.Input<boolean>;
 }
 
-export type DockgeStackArgs = StackArgs;
-
 /**
- * Manages a Docker Compose stack on a Dockge server via the REST API.
+ * Manages a Docker Compose stack on a homelab server via the REST API.
  * Supports creating, updating, starting, stopping, and deleting stacks.
  *
  * ## Example Usage
@@ -74,9 +70,6 @@ export class Stack extends pulumi.CustomResource {
       version: PLUGIN_VERSION,
       pluginDownloadURL: PLUGIN_DOWNLOAD_URL,
       ...opts,
-      aliases: [{ type: "dockge:index:DockgeStack" }],
     });
   }
 }
-
-export class DockgeStack extends Stack {}

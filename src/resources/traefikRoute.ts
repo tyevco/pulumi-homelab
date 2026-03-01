@@ -5,7 +5,7 @@ import {
   putTraefikRoute,
   deleteTraefikRoute,
   ensureConfigured,
-} from "../dockgeClient";
+} from "../homelabClient";
 import { diffYaml } from "../composeDiff";
 import YAML from "yaml";
 

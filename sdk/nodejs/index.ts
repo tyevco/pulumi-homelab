@@ -1,5 +1,3 @@
-// Pulumi SDK for Homelab - manages homelab infrastructure via the Dockge REST API
-
 // Provider
 export { Provider, ProviderArgs } from "./provider";
 
@@ -13,6 +11,4 @@ export { OpnsenseUnboundHostOverride, OpnsenseUnboundHostOverrideArgs } from "./
 export { OpnsenseUnboundForward, OpnsenseUnboundForwardArgs } from "./opnsenseUnboundForward";
 export { OpnsenseUnboundAcl, OpnsenseUnboundAclArgs } from "./opnsenseUnboundAcl";
 export { OpnsenseUnboundDnsbl, OpnsenseUnboundDnsblArgs } from "./opnsenseUnboundDnsbl";
-
-// Backward compatibility aliases
-export { DockgeStack, DockgeStackArgs, DockgeContainerInfo } from "./stack";
+export { LxcContainer, LxcContainerArgs } from "./lxcContainer";

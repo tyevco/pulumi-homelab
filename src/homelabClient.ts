@@ -5,8 +5,6 @@ export interface HomelabClientConfig {
   apiKey: string;
 }
 
-export type DockgeClientConfig = HomelabClientConfig;
-
 export interface ContainerInfo {
   name: string;
   service: string;
@@ -28,15 +26,11 @@ export interface StackInfo {
   containers: ContainerInfo[];
 }
 
-export type DockgeStackInfo = StackInfo;
-
 let currentConfig: HomelabClientConfig | null = null;
 
 export function configureClient(config: HomelabClientConfig): void {
   currentConfig = config;
 }
-
-export const configureDockgeClient = configureClient;
 
 export function ensureConfigured(): HomelabClientConfig {
   if (!currentConfig) {
@@ -93,7 +87,7 @@ async function request<T>(method: string, path: string, body?: any): Promise<T> 
     } catch {
       message = text;
     }
-    throw new Error(`Dockge API ${method} ${path} failed (${res.status}): ${message}`);
+    throw new Error(`Homelab API ${method} ${path} failed (${res.status}): ${message}`);
   }
 
   return res.json();
@@ -179,4 +173,50 @@ export async function putTraefikRoute(name: string, content: string): Promise<Tr
 
 export async function deleteTraefikRoute(name: string): Promise<void> {
   await request<void>("DELETE", `/api/traefik/routes/${encodeURIComponent(name)}`);
+}
+
+// LXC interfaces
+export interface LxcContainerInfo {
+  name: string;
+  status: number;
+  type: string;
+  ip: string;
+  autostart: boolean;
+  pid: number;
+  memory: string;
+  config: string;
+}
+
+// LXC API functions
+export async function listLxcContainers(): Promise<LxcContainerInfo[]> {
+  return request<LxcContainerInfo[]>("GET", "/api/lxc");
+}
+
+export async function getLxcContainer(name: string): Promise<LxcContainerInfo> {
+  return request<LxcContainerInfo>("GET", `/api/lxc/${encodeURIComponent(name)}`);
+}
+
+export async function createLxcContainer(
+  name: string,
+  dist: string,
+  release: string,
+  arch: string,
+): Promise<LxcContainerInfo> {
+  return request<LxcContainerInfo>("POST", "/api/lxc", { name, dist, release, arch });
+}
+
+export async function deleteLxcContainer(name: string): Promise<void> {
+  await request<void>("DELETE", `/api/lxc/${encodeURIComponent(name)}`);
+}
+
+export async function saveLxcConfig(name: string, config: string): Promise<LxcContainerInfo> {
+  return request<LxcContainerInfo>("PUT", `/api/lxc/${encodeURIComponent(name)}/config`, { config });
+}
+
+export async function startLxcContainer(name: string): Promise<LxcContainerInfo> {
+  return request<LxcContainerInfo>("POST", `/api/lxc/${encodeURIComponent(name)}/start`);
+}
+
+export async function stopLxcContainer(name: string): Promise<LxcContainerInfo> {
+  return request<LxcContainerInfo>("POST", `/api/lxc/${encodeURIComponent(name)}/stop`);
 }

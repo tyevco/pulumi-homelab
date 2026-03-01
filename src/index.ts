@@ -2,7 +2,7 @@ import * as fs from "fs";
 import * as path from "path";
 import * as grpc from "@grpc/grpc-js";
 import { structToObject, objectToStruct, unwrapSecret } from "./helpers";
-import { configureClient } from "./dockgeClient";
+import { configureClient } from "./homelabClient";
 import { configureOpnsenseClient } from "./opnsenseClient";
 import { dispatchCheck, dispatchDiff, dispatchCreate, dispatchRead, dispatchUpdate, dispatchDelete } from "./provider";
 
@@ -45,9 +45,9 @@ const providerImpl = {
   ) {
     const args = structToObject(call.request.getArgs());
 
-    // Extract Dockge configuration (unwrap secrets)
-    const url = unwrapSecret(args["url"] || args["homelab:config:url"] || args["dockge:config:url"]) || "";
-    const apiKey = unwrapSecret(args["apiKey"] || args["homelab:config:apiKey"] || args["dockge:config:apiKey"]) || "";
+    // Extract Homelab configuration (unwrap secrets)
+    const url = unwrapSecret(args["url"] || args["homelab:config:url"]) || "";
+    const apiKey = unwrapSecret(args["apiKey"] || args["homelab:config:apiKey"]) || "";
 
     if (url && apiKey) {
       configureClient({ url, apiKey });
@@ -81,7 +81,7 @@ const providerImpl = {
     const news = structToObject(call.request.getNews());
     const failures: any[] = [];
 
-    // Dockge cross-dependency: if either field is set, both are required
+    // Homelab cross-dependency: if either field is set, both are required
     const url = news["url"] || "";
     const apiKey = news["apiKey"] || "";
     if (url && !apiKey) {
