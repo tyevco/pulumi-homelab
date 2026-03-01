@@ -9,7 +9,13 @@ jest.mock("../src/opnsenseClient", () => ({
   setHostOverride: jest.fn(),
   delHostOverride: jest.fn(),
   hostOverrideToApi: jest.fn((inputs: any) => ({ hostname: inputs.hostname, domain: inputs.domain })),
-  hostOverrideFromApi: jest.fn((data: any) => ({ hostname: data.hostname, domain: data.domain, enabled: data.enabled === "1" })),
+  hostOverrideFromApi: jest.fn((data: any) => {
+    const result: Record<string, any> = { hostname: data.hostname, domain: data.domain, enabled: data.enabled === "1" };
+    if (data.rr !== undefined) result.rr = data.rr;
+    if (data.server !== undefined) result.server = data.server;
+    if (data.mx !== undefined) result.mx = data.mx;
+    return result;
+  }),
 }));
 
 const opnsenseClient = require("../src/opnsenseClient");
@@ -147,7 +153,7 @@ describe("opnsenseUnboundHostOverride create", () => {
     expect(opnsenseClient.addHostOverride).not.toHaveBeenCalled();
   });
 
-  it("creates host override via withUnboundReconfigure", async () => {
+  it("creates host override via withUnboundReconfigure and verifies toApi args", async () => {
     opnsenseClient.addHostOverride.mockResolvedValue({ uuid: "ho-uuid-1" });
 
     const inputs = { domain: "example.com", server: "1.2.3.4" };
@@ -157,6 +163,7 @@ describe("opnsenseUnboundHostOverride create", () => {
     expect(err).toBeNull();
     expect(response.getId()).toBe("ho-uuid-1");
     expect(opnsenseClient.withUnboundReconfigure).toHaveBeenCalled();
+    expect(opnsenseClient.hostOverrideToApi).toHaveBeenCalledWith(inputs);
   });
 
   it("returns error on API failure", async () => {
@@ -173,8 +180,8 @@ describe("opnsenseUnboundHostOverride create", () => {
 describe("opnsenseUnboundHostOverride read", () => {
   beforeEach(() => { jest.clearAllMocks(); });
 
-  it("reads host override and returns outputs", async () => {
-    opnsenseClient.getHostOverride.mockResolvedValue({ hostoverride: { hostname: "myhost", domain: "example.com", enabled: "1" } });
+  it("reads host override and returns outputs with all fields", async () => {
+    opnsenseClient.getHostOverride.mockResolvedValue({ hostoverride: { hostname: "myhost", domain: "example.com", enabled: "1", rr: "A", server: "1.2.3.4" } });
 
     const call = makeReadCall("ho-uuid-1");
     const { err, response } = await callHandler(opnsenseUnboundHostOverrideResource.read, call);
@@ -183,6 +190,11 @@ describe("opnsenseUnboundHostOverride read", () => {
     expect(response.getId()).toBe("ho-uuid-1");
     const props = response.getProperties().toJavaScript();
     expect(props.uuid).toBe("ho-uuid-1");
+    expect(props.hostname).toBe("myhost");
+    expect(props.domain).toBe("example.com");
+    expect(props.enabled).toBe(true);
+    expect(props.rr).toBe("A");
+    expect(props.server).toBe("1.2.3.4");
   });
 
   it("returns empty response on 404", async () => {
@@ -219,16 +231,19 @@ describe("opnsenseUnboundHostOverride update", () => {
     expect(opnsenseClient.setHostOverride).not.toHaveBeenCalled();
   });
 
-  it("updates host override via withUnboundReconfigure", async () => {
+  it("updates host override via withUnboundReconfigure and verifies toApi args", async () => {
     opnsenseClient.setHostOverride.mockResolvedValue(undefined);
 
     const olds = { domain: "example.com", server: "1.2.3.4" };
     const news = { domain: "example.com", server: "5.6.7.8" };
     const call = makeUpdateCall("ho-uuid-1", olds, news);
-    const { err } = await callHandler(opnsenseUnboundHostOverrideResource.update, call);
+    const { err, response } = await callHandler(opnsenseUnboundHostOverrideResource.update, call);
 
     expect(err).toBeNull();
     expect(opnsenseClient.withUnboundReconfigure).toHaveBeenCalled();
+    expect(opnsenseClient.hostOverrideToApi).toHaveBeenCalledWith(news);
+    const props = response.getProperties().toJavaScript();
+    expect(props.uuid).toBe("ho-uuid-1");
   });
 
   it("returns error on API failure", async () => {
