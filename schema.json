@@ -843,6 +843,90 @@
         "uuid",
         "description"
       ]
+    },
+    "homelab:index:LxcContainer": {
+      "description": "Manages an LXC container on a homelab server via the REST API. Supports creating, configuring, starting, stopping, and deleting containers.",
+      "inputProperties": {
+        "name": {
+          "type": "string",
+          "description": "The container name. Must match ^[a-z0-9_.-]+$."
+        },
+        "dist": {
+          "type": "string",
+          "description": "The Linux distribution (e.g., ubuntu, debian, alpine)."
+        },
+        "release": {
+          "type": "string",
+          "description": "The distribution release (e.g., jammy, bookworm)."
+        },
+        "arch": {
+          "type": "string",
+          "description": "The architecture (e.g., amd64, arm64)."
+        },
+        "config": {
+          "type": "string",
+          "description": "Optional LXC container configuration file content."
+        },
+        "autostart": {
+          "type": "boolean",
+          "description": "Whether the container should autostart (default: false).",
+          "default": false
+        }
+      },
+      "requiredInputs": [
+        "name",
+        "dist",
+        "release",
+        "arch"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The container name."
+        },
+        "dist": {
+          "type": "string",
+          "description": "The Linux distribution."
+        },
+        "release": {
+          "type": "string",
+          "description": "The distribution release."
+        },
+        "arch": {
+          "type": "string",
+          "description": "The architecture."
+        },
+        "config": {
+          "type": "string",
+          "description": "The LXC container configuration file content."
+        },
+        "autostart": {
+          "type": "boolean",
+          "description": "Whether the container autostarts."
+        },
+        "status": {
+          "type": "integer",
+          "description": "The current container status code."
+        },
+        "ip": {
+          "type": "string",
+          "description": "The container's IP address."
+        },
+        "pid": {
+          "type": "integer",
+          "description": "The container's process ID."
+        },
+        "memory": {
+          "type": "string",
+          "description": "The container's memory usage."
+        }
+      },
+      "required": [
+        "name",
+        "dist",
+        "release",
+        "arch"
+      ]
     }
   },
   "language": {
