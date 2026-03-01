@@ -65,10 +65,6 @@ export function makeCheckFailure(property: string, reason: string): any {
   return failure;
 }
 
-export function grpcError(code: grpc.status, message: string): grpc.ServiceError {
-  return { code, details: message, message, metadata: new grpc.Metadata(), name: "ServiceError" };
-}
-
 export type GrpcCallback<T> = grpc.sendUnaryData<T>;
 export type GrpcCall<Req, Res> = grpc.ServerUnaryCall<Req, Res>;
 
