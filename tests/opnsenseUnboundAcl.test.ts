@@ -286,6 +286,15 @@ describe("opnsenseUnboundAcl delete", () => {
     expect(err).toBeNull();
   });
 
+  it("ignores 'not found' text on delete", async () => {
+    opnsenseClient.delAcl.mockRejectedValue(new Error("resource not found"));
+
+    const call = makeDeleteCall("gone-uuid");
+    const { err } = await callHandler(opnsenseUnboundAclResource.delete, call);
+
+    expect(err).toBeNull();
+  });
+
   it("returns error on non-404 failure", async () => {
     opnsenseClient.delAcl.mockRejectedValue(new Error("connection refused"));
 

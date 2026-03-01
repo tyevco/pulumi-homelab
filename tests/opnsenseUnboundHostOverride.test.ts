@@ -279,6 +279,15 @@ describe("opnsenseUnboundHostOverride delete", () => {
     expect(err).toBeNull();
   });
 
+  it("ignores 'not found' text on delete", async () => {
+    opnsenseClient.delHostOverride.mockRejectedValue(new Error("resource not found"));
+
+    const call = makeDeleteCall("gone-uuid");
+    const { err } = await callHandler(opnsenseUnboundHostOverrideResource.delete, call);
+
+    expect(err).toBeNull();
+  });
+
   it("returns error on non-404 failure", async () => {
     opnsenseClient.delHostOverride.mockRejectedValue(new Error("connection refused"));
 
