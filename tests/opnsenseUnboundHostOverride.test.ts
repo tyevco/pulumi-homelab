@@ -75,6 +75,17 @@ describe("opnsenseUnboundHostOverride check", () => {
     expect(inputs.addptr).toBe(false);
   });
 
+  it("accepts TXT as a valid rr value", async () => {
+    const call = makeCheckCall({ domain: "example.com", rr: "TXT", txtdata: "v=spf1 include:example.com ~all" });
+    const { err, response } = await callHandler(opnsenseUnboundHostOverrideResource.check, call);
+
+    expect(err).toBeNull();
+    expect(response.getFailuresList().length).toBe(0);
+    const inputs = response.getInputs().toJavaScript();
+    expect(inputs.rr).toBe("TXT");
+    expect(inputs.txtdata).toBe("v=spf1 include:example.com ~all");
+  });
+
   it("rejects invalid rr value", async () => {
     const call = makeCheckCall({ domain: "example.com", rr: "CNAME" });
     const { err, response } = await callHandler(opnsenseUnboundHostOverrideResource.check, call);

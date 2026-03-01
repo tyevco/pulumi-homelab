@@ -24,7 +24,7 @@ export const opnsenseUnboundHostOverrideResource = {
     const inputs = structToObject(call.request.getNews());
     const failures: any[] = [];
 
-    const VALID_RR = ["A", "AAAA", "MX"];
+    const VALID_RR = ["A", "AAAA", "MX", "TXT"];
     if (!inputs.domain) {
       failures.push(makeCheckFailure("domain", "domain is required"));
     }
