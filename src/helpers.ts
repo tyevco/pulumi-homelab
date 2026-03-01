@@ -57,6 +57,17 @@ export function unwrapSecrets(obj: Record<string, any>): Record<string, any> {
   return result;
 }
 
+/**
+ * Compare two values for diff purposes. Treats undefined and "" as equivalent
+ * to prevent spurious diffs when optional fields come back as empty strings
+ * from the API but were undefined in state.
+ */
+export function valuesEqual(a: any, b: any): boolean {
+  const normA = a === "" ? undefined : a;
+  const normB = b === "" ? undefined : b;
+  return normA === normB;
+}
+
 export function makeCheckFailure(property: string, reason: string): any {
   const providerProto = require("@pulumi/pulumi/proto/provider_pb");
   const failure = new providerProto.CheckFailure();

@@ -132,6 +132,26 @@ describe("opnsenseAlias diff", () => {
     expect(response.getChanges()).toBe(providerProto.DiffResponse.DiffChanges.DIFF_SOME);
     expect(response.getDiffsList()).toEqual(["enabled"]);
   });
+
+  it("treats missing and empty string as equivalent (no spurious diff)", async () => {
+    const olds = { name: "test", type: "host" };
+    const news = { name: "test", type: "host", content: "", description: "" };
+    const call = makeDiffCall(olds, news);
+    const { response } = await callHandler(opnsenseAliasResource.diff, call);
+
+    expect(response.getChanges()).toBe(providerProto.DiffResponse.DiffChanges.DIFF_NONE);
+    expect(response.getDiffsList().length).toBe(0);
+  });
+
+  it("detects change in multiline content", async () => {
+    const olds = { name: "test", type: "host", content: "10.0.0.1\n10.0.0.2" };
+    const news = { name: "test", type: "host", content: "10.0.0.1\n10.0.0.3" };
+    const call = makeDiffCall(olds, news);
+    const { response } = await callHandler(opnsenseAliasResource.diff, call);
+
+    expect(response.getChanges()).toBe(providerProto.DiffResponse.DiffChanges.DIFF_SOME);
+    expect(response.getDiffsList()).toEqual(["content"]);
+  });
 });
 
 describe("opnsenseAlias create", () => {

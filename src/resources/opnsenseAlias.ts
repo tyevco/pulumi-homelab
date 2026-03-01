@@ -1,5 +1,5 @@
 import * as grpc from "@grpc/grpc-js";
-import { structToObject, objectToStruct, makeCheckFailure, GrpcCallback, GrpcCall } from "../helpers";
+import { structToObject, objectToStruct, makeCheckFailure, valuesEqual, GrpcCallback, GrpcCall } from "../helpers";
 import {
   ensureOpnsenseConfigured,
   withFirewallApply,
@@ -47,7 +47,7 @@ export const opnsenseAliasResource = {
     for (const field of INPUT_FIELDS) {
       const oldVal = olds[field];
       const newVal = news[field];
-      if (oldVal !== newVal && !(oldVal === undefined && newVal === undefined)) {
+      if (!valuesEqual(oldVal, newVal)) {
         diffs.push(field);
         const propDiff = new providerProto.PropertyDiff();
         propDiff.setKind(providerProto.PropertyDiff.Kind.UPDATE);
