@@ -149,3 +149,108 @@ describe("diffYaml", () => {
     expect(changes.length).toBeGreaterThan(0);
   });
 });
+
+describe("diffCompose edge cases", () => {
+  it("handles YAML merge keys (anchors/aliases)", () => {
+    const yaml = `
+defaults: &defaults
+  image: nginx
+  restart: always
+services:
+  web:
+    <<: *defaults
+    ports:
+      - "80:80"`;
+    // Same YAML, no diff
+    expect(diffCompose(yaml, undefined, yaml, undefined)).toEqual([]);
+  });
+
+  it("detects diff when anchor-merged value changes", () => {
+    const oldYaml = `
+defaults: &defaults
+  image: nginx
+services:
+  web:
+    <<: *defaults`;
+    const newYaml = `
+defaults: &defaults
+  image: apache
+services:
+  web:
+    <<: *defaults`;
+    const changes = diffCompose(oldYaml, undefined, newYaml, undefined);
+    expect(changes).toContainEqual({ kind: "UPDATE", path: "defaults.image" });
+    expect(changes).toContainEqual({ kind: "UPDATE", path: "services.web.image" });
+  });
+
+  it("normalizes environment entry without value (bare name)", () => {
+    const oldYaml = 'services:\n  web:\n    environment:\n      - DEBUG';
+    const newYaml = 'services:\n  web:\n    environment:\n      DEBUG: ""';
+    // Both should normalize to { DEBUG: "" }
+    expect(diffCompose(oldYaml, undefined, newYaml, undefined)).toEqual([]);
+  });
+
+  it("detects array element additions (longer new array)", () => {
+    const oldYaml = "services:\n  web:\n    ports:\n      - '80:80'";
+    const newYaml = "services:\n  web:\n    ports:\n      - '80:80'\n      - '443:443'";
+    const changes = diffCompose(oldYaml, undefined, newYaml, undefined);
+    expect(changes).toContainEqual({ kind: "ADD", path: "services.web.ports[1]" });
+  });
+
+  it("detects array element deletions (shorter new array)", () => {
+    const oldYaml = "services:\n  web:\n    ports:\n      - '80:80'\n      - '443:443'";
+    const newYaml = "services:\n  web:\n    ports:\n      - '80:80'";
+    const changes = diffCompose(oldYaml, undefined, newYaml, undefined);
+    expect(changes).toContainEqual({ kind: "DELETE", path: "services.web.ports[1]" });
+  });
+
+  it("detects type change from scalar to object", () => {
+    const oldYaml = "services:\n  web:\n    image: nginx";
+    const newYaml = "services:\n  web:\n    image:\n      name: nginx\n      tag: latest";
+    const changes = diffCompose(oldYaml, undefined, newYaml, undefined);
+    expect(changes.length).toBeGreaterThan(0);
+    expect(changes).toContainEqual({ kind: "UPDATE", path: "services.web.image" });
+  });
+
+  it("detects type change from object to scalar", () => {
+    const oldYaml = "services:\n  web:\n    image:\n      name: nginx";
+    const newYaml = "services:\n  web:\n    image: nginx:latest";
+    const changes = diffCompose(oldYaml, undefined, newYaml, undefined);
+    expect(changes).toContainEqual({ kind: "UPDATE", path: "services.web.image" });
+  });
+
+  it("handles both old and new overrides", () => {
+    const main = "services:\n  web:\n    image: nginx";
+    const oldOverride = "services:\n  web:\n    image: nginx:1.0";
+    const newOverride = "services:\n  web:\n    image: nginx:2.0";
+    const changes = diffCompose(main, oldOverride, main, newOverride);
+    expect(changes).toContainEqual({ kind: "UPDATE", path: "services.web.image" });
+  });
+
+  it("returns no diff when both overrides produce same result", () => {
+    const main = "services:\n  web:\n    image: nginx";
+    const override = "services:\n  web:\n    image: nginx:1.0";
+    expect(diffCompose(main, override, main, override)).toEqual([]);
+  });
+
+  it("does not normalize non-environment/labels fields in services", () => {
+    const oldYaml = "services:\n  web:\n    ports:\n      - '80:80'";
+    const newYaml = "services:\n  web:\n    ports:\n      - '8080:80'";
+    const changes = diffCompose(oldYaml, undefined, newYaml, undefined);
+    // ports should NOT be normalized from array to map
+    expect(changes).toContainEqual({ kind: "UPDATE", path: "services.web.ports[0]" });
+  });
+
+  it("handles non-service top-level keys unchanged", () => {
+    const yaml = "version: '3'\nservices:\n  web:\n    image: nginx\nvolumes:\n  data: {}";
+    expect(diffCompose(yaml, undefined, yaml, undefined)).toEqual([]);
+  });
+
+  it("detects changes in non-service top-level keys", () => {
+    const oldYaml = "services:\n  web:\n    image: nginx\nvolumes:\n  data: {}";
+    const newYaml = "services:\n  web:\n    image: nginx\nvolumes:\n  logs: {}";
+    const changes = diffCompose(oldYaml, undefined, newYaml, undefined);
+    expect(changes).toContainEqual({ kind: "DELETE", path: "volumes.data" });
+    expect(changes).toContainEqual({ kind: "ADD", path: "volumes.logs" });
+  });
+});
