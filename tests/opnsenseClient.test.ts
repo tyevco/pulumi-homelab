@@ -1075,6 +1075,105 @@ describe("normalizeGetItemResponse", () => {
     expect(result.quick).toBe(true);
     expect(result.sequence).toBe(5);
   });
+
+  it("normalizes selected maps then hostOverrideFromApi produces correct output", () => {
+    const raw = {
+      enabled: "1",
+      hostname: "myhost",
+      domain: "example.com",
+      rr: {
+        A: { value: "A (IPv4 address)", selected: 1 },
+        AAAA: { value: "AAAA (IPv6 address)", selected: 0 },
+        MX: { value: "MX (Mail server)", selected: 0 },
+      },
+      server: "1.2.3.4",
+      addptr: "1",
+      mxprio: "10",
+      ttl: "300",
+    };
+    const normalized = normalizeGetItemResponse(raw);
+    const result = hostOverrideFromApi(normalized as any);
+    expect(result.enabled).toBe(true);
+    expect(result.hostname).toBe("myhost");
+    expect(result.domain).toBe("example.com");
+    expect(result.rr).toBe("A");
+    expect(result.server).toBe("1.2.3.4");
+    expect(result.addptr).toBe(true);
+    expect(result.mxprio).toBe(10);
+    expect(result.ttl).toBe(300);
+  });
+
+  it("normalizes selected maps then forwardFromApi produces correct output", () => {
+    const raw = {
+      enabled: "1",
+      type: {
+        forward: { value: "Forward", selected: 0 },
+        dot: { value: "DNS over TLS", selected: 1 },
+      },
+      server: "1.1.1.1",
+      port: "853",
+      forward_tcp_upstream: "0",
+      forward_first: "1",
+    };
+    const normalized = normalizeGetItemResponse(raw);
+    const result = forwardFromApi(normalized as any);
+    expect(result.enabled).toBe(true);
+    expect(result.type).toBe("dot");
+    expect(result.server).toBe("1.1.1.1");
+    expect(result.port).toBe(853);
+    expect(result.forwardTcpUpstream).toBe(false);
+    expect(result.forwardFirst).toBe(true);
+  });
+
+  it("normalizes selected maps then aclFromApi produces correct output", () => {
+    const raw = {
+      enabled: "1",
+      name: "lan-acl",
+      action: {
+        allow: { value: "Allow", selected: 1 },
+        deny: { value: "Deny", selected: 0 },
+        refuse: { value: "Refuse", selected: 0 },
+      },
+      networks: {
+        "10.0.0.0/8": { value: "10.0.0.0/8", selected: 1 },
+        "192.168.0.0/16": { value: "192.168.0.0/16", selected: 1 },
+      },
+      description: "LAN access",
+    };
+    const normalized = normalizeGetItemResponse(raw);
+    const result = aclFromApi(normalized as any);
+    expect(result.enabled).toBe(true);
+    expect(result.name).toBe("lan-acl");
+    expect(result.action).toBe("allow");
+    expect(result.networks).toBe("10.0.0.0/8\n192.168.0.0/16");
+    expect(result.description).toBe("LAN access");
+  });
+
+  it("normalizes selected maps then dnsblFromApi produces correct output", () => {
+    const raw = {
+      enabled: "1",
+      type: {
+        dnsbl: { value: "DNS Blocklist", selected: 1 },
+      },
+      lists: {
+        listA: { value: "List A", selected: 1 },
+        listB: { value: "List B", selected: 1 },
+      },
+      cache_ttl: "72000",
+      nxdomain: "0",
+      source_nets: "10.0.0.0/8",
+      description: "My DNSBL",
+    };
+    const normalized = normalizeGetItemResponse(raw);
+    const result = dnsblFromApi(normalized as any);
+    expect(result.enabled).toBe(true);
+    expect(result.type).toBe("dnsbl");
+    expect(result.lists).toBe("listA\nlistB");
+    expect(result.cacheTtl).toBe(72000);
+    expect(result.nxdomain).toBe(false);
+    expect(result.sourceNets).toBe("10.0.0.0/8");
+    expect(result.description).toBe("My DNSBL");
+  });
 });
 
 describe("get* functions normalize getItem responses", () => {

@@ -9,7 +9,13 @@ jest.mock("../src/opnsenseClient", () => ({
   setForward: jest.fn(),
   delForward: jest.fn(),
   forwardToApi: jest.fn((inputs: any) => ({ server: inputs.server })),
-  forwardFromApi: jest.fn((data: any) => ({ server: data.server, enabled: data.enabled === "1" })),
+  forwardFromApi: jest.fn((data: any) => {
+    const result: Record<string, any> = { server: data.server, enabled: data.enabled === "1" };
+    if (data.type !== undefined) result.type = data.type;
+    if (data.port !== undefined) result.port = parseInt(data.port, 10);
+    if (data.domain !== undefined) result.domain = data.domain;
+    return result;
+  }),
 }));
 
 const opnsenseClient = require("../src/opnsenseClient");
@@ -68,6 +74,17 @@ describe("opnsenseUnboundForward check", () => {
 
     const inputs = response.getInputs().toJavaScript();
     expect(inputs.forwardFirst).toBe(true);
+  });
+
+  it("rejects invalid type value", async () => {
+    const call = makeCheckCall({ server: "8.8.8.8", type: "recursive" });
+    const { err, response } = await callHandler(opnsenseUnboundForwardResource.check, call);
+
+    expect(err).toBeNull();
+    const failures = response.getFailuresList();
+    expect(failures.length).toBe(1);
+    expect(failures[0].getProperty()).toBe("type");
+    expect(failures[0].getReason()).toContain("must be one of");
   });
 });
 
@@ -136,15 +153,17 @@ describe("opnsenseUnboundForward create", () => {
     expect(opnsenseClient.addForward).not.toHaveBeenCalled();
   });
 
-  it("creates forward via withUnboundReconfigure", async () => {
+  it("creates forward via withUnboundReconfigure and verifies toApi args", async () => {
     opnsenseClient.addForward.mockResolvedValue({ uuid: "fwd-uuid-1" });
 
-    const call = makeCreateCall({ server: "8.8.8.8" });
+    const inputs = { server: "8.8.8.8" };
+    const call = makeCreateCall(inputs);
     const { err, response } = await callHandler(opnsenseUnboundForwardResource.create, call);
 
     expect(err).toBeNull();
     expect(response.getId()).toBe("fwd-uuid-1");
     expect(opnsenseClient.withUnboundReconfigure).toHaveBeenCalled();
+    expect(opnsenseClient.forwardToApi).toHaveBeenCalledWith(inputs);
   });
 
   it("returns error on API failure", async () => {
@@ -161,14 +180,20 @@ describe("opnsenseUnboundForward create", () => {
 describe("opnsenseUnboundForward read", () => {
   beforeEach(() => { jest.clearAllMocks(); });
 
-  it("reads forward and returns outputs", async () => {
-    opnsenseClient.getForward.mockResolvedValue({ forward: { server: "8.8.8.8", enabled: "1" } });
+  it("reads forward and returns outputs with all fields", async () => {
+    opnsenseClient.getForward.mockResolvedValue({ forward: { server: "8.8.8.8", enabled: "1", type: "dot", port: "853" } });
 
     const call = makeReadCall("fwd-uuid-1");
     const { err, response } = await callHandler(opnsenseUnboundForwardResource.read, call);
 
     expect(err).toBeNull();
     expect(response.getId()).toBe("fwd-uuid-1");
+    const props = response.getProperties().toJavaScript();
+    expect(props.uuid).toBe("fwd-uuid-1");
+    expect(props.server).toBe("8.8.8.8");
+    expect(props.enabled).toBe(true);
+    expect(props.type).toBe("dot");
+    expect(props.port).toBe(853);
   });
 
   it("returns empty response on 404", async () => {
@@ -203,14 +228,18 @@ describe("opnsenseUnboundForward update", () => {
     expect(opnsenseClient.setForward).not.toHaveBeenCalled();
   });
 
-  it("updates forward via withUnboundReconfigure", async () => {
+  it("updates forward via withUnboundReconfigure and verifies toApi args", async () => {
     opnsenseClient.setForward.mockResolvedValue(undefined);
 
-    const call = makeUpdateCall("fwd-uuid-1", { server: "8.8.8.8" }, { server: "1.1.1.1" });
-    const { err } = await callHandler(opnsenseUnboundForwardResource.update, call);
+    const news = { server: "1.1.1.1" };
+    const call = makeUpdateCall("fwd-uuid-1", { server: "8.8.8.8" }, news);
+    const { err, response } = await callHandler(opnsenseUnboundForwardResource.update, call);
 
     expect(err).toBeNull();
     expect(opnsenseClient.withUnboundReconfigure).toHaveBeenCalled();
+    expect(opnsenseClient.forwardToApi).toHaveBeenCalledWith(news);
+    const props = response.getProperties().toJavaScript();
+    expect(props.uuid).toBe("fwd-uuid-1");
   });
 
   it("returns error on API failure", async () => {

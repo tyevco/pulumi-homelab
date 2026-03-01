@@ -9,7 +9,12 @@ jest.mock("../src/opnsenseClient", () => ({
   setAcl: jest.fn(),
   delAcl: jest.fn(),
   aclToApi: jest.fn((inputs: any) => ({ name: inputs.name, networks: inputs.networks })),
-  aclFromApi: jest.fn((data: any) => ({ name: data.name, networks: data.networks, enabled: data.enabled === "1" })),
+  aclFromApi: jest.fn((data: any) => {
+    const result: Record<string, any> = { name: data.name, networks: data.networks, enabled: data.enabled === "1" };
+    if (data.action !== undefined) result.action = data.action;
+    if (data.description !== undefined) result.description = data.description;
+    return result;
+  }),
 }));
 
 const opnsenseClient = require("../src/opnsenseClient");
@@ -81,6 +86,17 @@ describe("opnsenseUnboundAcl check", () => {
     const inputs = response.getInputs().toJavaScript();
     expect(inputs.action).toBe("deny");
   });
+
+  it("rejects invalid action value", async () => {
+    const call = makeCheckCall({ name: "test", networks: "10.0.0.0/8", action: "drop" });
+    const { err, response } = await callHandler(opnsenseUnboundAclResource.check, call);
+
+    expect(err).toBeNull();
+    const failures = response.getFailuresList();
+    expect(failures.length).toBe(1);
+    expect(failures[0].getProperty()).toBe("action");
+    expect(failures[0].getReason()).toContain("must be one of");
+  });
 });
 
 describe("opnsenseUnboundAcl diff", () => {
@@ -148,15 +164,17 @@ describe("opnsenseUnboundAcl create", () => {
     expect(opnsenseClient.addAcl).not.toHaveBeenCalled();
   });
 
-  it("creates ACL via withUnboundReconfigure", async () => {
+  it("creates ACL via withUnboundReconfigure and verifies toApi args", async () => {
     opnsenseClient.addAcl.mockResolvedValue({ uuid: "acl-uuid-1" });
 
-    const call = makeCreateCall({ name: "lan-acl", networks: "10.0.0.0/8" });
+    const inputs = { name: "lan-acl", networks: "10.0.0.0/8" };
+    const call = makeCreateCall(inputs);
     const { err, response } = await callHandler(opnsenseUnboundAclResource.create, call);
 
     expect(err).toBeNull();
     expect(response.getId()).toBe("acl-uuid-1");
     expect(opnsenseClient.withUnboundReconfigure).toHaveBeenCalled();
+    expect(opnsenseClient.aclToApi).toHaveBeenCalledWith(inputs);
   });
 
   it("returns error on API failure", async () => {
@@ -173,14 +191,20 @@ describe("opnsenseUnboundAcl create", () => {
 describe("opnsenseUnboundAcl read", () => {
   beforeEach(() => { jest.clearAllMocks(); });
 
-  it("reads ACL and returns outputs", async () => {
-    opnsenseClient.getAcl.mockResolvedValue({ acl: { name: "lan-acl", networks: "10.0.0.0/8", enabled: "1" } });
+  it("reads ACL and returns outputs with all fields", async () => {
+    opnsenseClient.getAcl.mockResolvedValue({ acl: { name: "lan-acl", networks: "10.0.0.0/8", enabled: "1", action: "allow" } });
 
     const call = makeReadCall("acl-uuid-1");
     const { err, response } = await callHandler(opnsenseUnboundAclResource.read, call);
 
     expect(err).toBeNull();
     expect(response.getId()).toBe("acl-uuid-1");
+    const props = response.getProperties().toJavaScript();
+    expect(props.uuid).toBe("acl-uuid-1");
+    expect(props.name).toBe("lan-acl");
+    expect(props.networks).toBe("10.0.0.0/8");
+    expect(props.enabled).toBe(true);
+    expect(props.action).toBe("allow");
   });
 
   it("returns empty response on 404", async () => {
@@ -215,14 +239,18 @@ describe("opnsenseUnboundAcl update", () => {
     expect(opnsenseClient.setAcl).not.toHaveBeenCalled();
   });
 
-  it("updates ACL via withUnboundReconfigure", async () => {
+  it("updates ACL via withUnboundReconfigure and verifies toApi args", async () => {
     opnsenseClient.setAcl.mockResolvedValue(undefined);
 
-    const call = makeUpdateCall("acl-uuid-1", { name: "lan-acl", networks: "10.0.0.0/8" }, { name: "lan-acl", networks: "192.168.0.0/16" });
-    const { err } = await callHandler(opnsenseUnboundAclResource.update, call);
+    const news = { name: "lan-acl", networks: "192.168.0.0/16" };
+    const call = makeUpdateCall("acl-uuid-1", { name: "lan-acl", networks: "10.0.0.0/8" }, news);
+    const { err, response } = await callHandler(opnsenseUnboundAclResource.update, call);
 
     expect(err).toBeNull();
     expect(opnsenseClient.withUnboundReconfigure).toHaveBeenCalled();
+    expect(opnsenseClient.aclToApi).toHaveBeenCalledWith(news);
+    const props = response.getProperties().toJavaScript();
+    expect(props.uuid).toBe("acl-uuid-1");
   });
 
   it("returns error on API failure", async () => {

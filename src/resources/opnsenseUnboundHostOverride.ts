@@ -24,6 +24,7 @@ export const opnsenseUnboundHostOverrideResource = {
     const inputs = structToObject(call.request.getNews());
     const failures: any[] = [];
 
+    const VALID_RR = ["A", "AAAA", "MX"];
     if (!inputs.domain) {
       failures.push(makeCheckFailure("domain", "domain is required"));
     }
@@ -31,6 +32,11 @@ export const opnsenseUnboundHostOverrideResource = {
     if (inputs.enabled === undefined) inputs.enabled = true;
     if (inputs.rr === undefined) inputs.rr = "A";
     if (inputs.addptr === undefined) inputs.addptr = true;
+
+    // Validate enum fields
+    if (inputs.rr && !VALID_RR.includes(inputs.rr)) {
+      failures.push(makeCheckFailure("rr", `rr must be one of: ${VALID_RR.join(", ")}`));
+    }
 
     const response = new providerProto.CheckResponse();
     response.setInputs(objectToStruct(inputs));

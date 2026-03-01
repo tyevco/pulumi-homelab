@@ -31,8 +31,14 @@ export const opnsenseUnboundAclResource = {
     }
 
     // Apply defaults
+    const VALID_ACTIONS = ["allow", "deny", "refuse", "allow_snoop", "deny_non_local", "refuse_non_local"];
     if (inputs.enabled === undefined) inputs.enabled = true;
     if (inputs.action === undefined) inputs.action = "allow";
+
+    // Validate enum fields
+    if (inputs.action && !VALID_ACTIONS.includes(inputs.action)) {
+      failures.push(makeCheckFailure("action", `action must be one of: ${VALID_ACTIONS.join(", ")}`));
+    }
 
     const response = new providerProto.CheckResponse();
     response.setInputs(objectToStruct(inputs));

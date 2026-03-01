@@ -9,7 +9,13 @@ jest.mock("../src/opnsenseClient", () => ({
   setDnsbl: jest.fn(),
   delDnsbl: jest.fn(),
   dnsblToApi: jest.fn((inputs: any) => ({ description: inputs.description })),
-  dnsblFromApi: jest.fn((data: any) => ({ description: data.description, enabled: data.enabled === "1" })),
+  dnsblFromApi: jest.fn((data: any) => {
+    const result: Record<string, any> = { description: data.description, enabled: data.enabled === "1" };
+    if (data.cache_ttl !== undefined) result.cacheTtl = parseInt(data.cache_ttl, 10);
+    if (data.lists !== undefined) result.lists = data.lists;
+    if (data.source_nets !== undefined) result.sourceNets = data.source_nets;
+    return result;
+  }),
 }));
 
 const opnsenseClient = require("../src/opnsenseClient");
@@ -155,15 +161,17 @@ describe("opnsenseUnboundDnsbl create", () => {
     expect(opnsenseClient.addDnsbl).not.toHaveBeenCalled();
   });
 
-  it("creates DNSBL via withUnboundReconfigure", async () => {
+  it("creates DNSBL via withUnboundReconfigure and verifies toApi args", async () => {
     opnsenseClient.addDnsbl.mockResolvedValue({ uuid: "dnsbl-uuid-1" });
 
-    const call = makeCreateCall({ description: "My blocklist" });
+    const inputs = { description: "My blocklist" };
+    const call = makeCreateCall(inputs);
     const { err, response } = await callHandler(opnsenseUnboundDnsblResource.create, call);
 
     expect(err).toBeNull();
     expect(response.getId()).toBe("dnsbl-uuid-1");
     expect(opnsenseClient.withUnboundReconfigure).toHaveBeenCalled();
+    expect(opnsenseClient.dnsblToApi).toHaveBeenCalledWith(inputs);
   });
 
   it("returns error on API failure", async () => {
@@ -180,14 +188,19 @@ describe("opnsenseUnboundDnsbl create", () => {
 describe("opnsenseUnboundDnsbl read", () => {
   beforeEach(() => { jest.clearAllMocks(); });
 
-  it("reads DNSBL and returns outputs", async () => {
-    opnsenseClient.getDnsbl.mockResolvedValue({ dnsbl: { description: "My blocklist", enabled: "1" } });
+  it("reads DNSBL and returns outputs with all fields", async () => {
+    opnsenseClient.getDnsbl.mockResolvedValue({ dnsbl: { description: "My blocklist", enabled: "1", cache_ttl: "72000" } });
 
     const call = makeReadCall("dnsbl-uuid-1");
     const { err, response } = await callHandler(opnsenseUnboundDnsblResource.read, call);
 
     expect(err).toBeNull();
     expect(response.getId()).toBe("dnsbl-uuid-1");
+    const props = response.getProperties().toJavaScript();
+    expect(props.uuid).toBe("dnsbl-uuid-1");
+    expect(props.description).toBe("My blocklist");
+    expect(props.enabled).toBe(true);
+    expect(props.cacheTtl).toBe(72000);
   });
 
   it("returns empty response on 404", async () => {
@@ -222,14 +235,18 @@ describe("opnsenseUnboundDnsbl update", () => {
     expect(opnsenseClient.setDnsbl).not.toHaveBeenCalled();
   });
 
-  it("updates DNSBL via withUnboundReconfigure", async () => {
+  it("updates DNSBL via withUnboundReconfigure and verifies toApi args", async () => {
     opnsenseClient.setDnsbl.mockResolvedValue(undefined);
 
-    const call = makeUpdateCall("dnsbl-uuid-1", { description: "old" }, { description: "new" });
-    const { err } = await callHandler(opnsenseUnboundDnsblResource.update, call);
+    const news = { description: "new" };
+    const call = makeUpdateCall("dnsbl-uuid-1", { description: "old" }, news);
+    const { err, response } = await callHandler(opnsenseUnboundDnsblResource.update, call);
 
     expect(err).toBeNull();
     expect(opnsenseClient.withUnboundReconfigure).toHaveBeenCalled();
+    expect(opnsenseClient.dnsblToApi).toHaveBeenCalledWith(news);
+    const props = response.getProperties().toJavaScript();
+    expect(props.uuid).toBe("dnsbl-uuid-1");
   });
 
   it("returns error on API failure", async () => {

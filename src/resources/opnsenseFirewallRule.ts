@@ -25,8 +25,13 @@ export const opnsenseFirewallRuleResource = {
     const inputs = structToObject(call.request.getNews());
     const failures: any[] = [];
 
+    const VALID_ACTIONS = ["pass", "block", "reject"];
+    const VALID_DIRECTIONS = ["in", "out"];
+    const VALID_IPPROTOCOLS = ["inet", "inet6", "inet46"];
     if (!inputs.action) {
       failures.push(makeCheckFailure("action", "action is required (pass, block, or reject)"));
+    } else if (!VALID_ACTIONS.includes(inputs.action)) {
+      failures.push(makeCheckFailure("action", `action must be one of: ${VALID_ACTIONS.join(", ")}`));
     }
     if (!inputs.interface) {
       failures.push(makeCheckFailure("interface", "interface is required (e.g., lan, wan, opt1)"));
@@ -37,6 +42,14 @@ export const opnsenseFirewallRuleResource = {
     if (inputs.protocol === undefined) inputs.protocol = "any";
     if (inputs.direction === undefined) inputs.direction = "in";
     if (inputs.quick === undefined) inputs.quick = true;
+
+    // Validate enum fields
+    if (inputs.direction && !VALID_DIRECTIONS.includes(inputs.direction)) {
+      failures.push(makeCheckFailure("direction", `direction must be one of: ${VALID_DIRECTIONS.join(", ")}`));
+    }
+    if (inputs.ipprotocol && !VALID_IPPROTOCOLS.includes(inputs.ipprotocol)) {
+      failures.push(makeCheckFailure("ipprotocol", `ipprotocol must be one of: ${VALID_IPPROTOCOLS.join(", ")}`));
+    }
 
     const response = new providerProto.CheckResponse();
     response.setInputs(objectToStruct(inputs));

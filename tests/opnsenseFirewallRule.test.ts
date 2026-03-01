@@ -85,6 +85,37 @@ describe("opnsenseFirewallRule check", () => {
     expect(err).toBeNull();
     expect(response.getFailuresList().length).toBe(0);
   });
+
+  it("rejects invalid action value", async () => {
+    const call = makeCheckCall({ action: "deny", interface: "lan" });
+    const { err, response } = await callHandler(opnsenseFirewallRuleResource.check, call);
+
+    expect(err).toBeNull();
+    const failures = response.getFailuresList();
+    expect(failures.length).toBe(1);
+    expect(failures[0].getProperty()).toBe("action");
+    expect(failures[0].getReason()).toContain("must be one of");
+  });
+
+  it("rejects invalid direction value", async () => {
+    const call = makeCheckCall({ action: "pass", interface: "lan", direction: "forward" });
+    const { err, response } = await callHandler(opnsenseFirewallRuleResource.check, call);
+
+    expect(err).toBeNull();
+    const failures = response.getFailuresList();
+    expect(failures.length).toBe(1);
+    expect(failures[0].getProperty()).toBe("direction");
+  });
+
+  it("rejects invalid ipprotocol value", async () => {
+    const call = makeCheckCall({ action: "pass", interface: "lan", ipprotocol: "ipv4" });
+    const { err, response } = await callHandler(opnsenseFirewallRuleResource.check, call);
+
+    expect(err).toBeNull();
+    const failures = response.getFailuresList();
+    expect(failures.length).toBe(1);
+    expect(failures[0].getProperty()).toBe("ipprotocol");
+  });
 });
 
 describe("opnsenseFirewallRule diff", () => {
