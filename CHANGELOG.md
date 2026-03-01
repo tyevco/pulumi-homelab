@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.3.3](https://github.com/tyevco/pulumi-homelab/compare/v0.3.2...v0.3.3) (2026-03-01)
+
+
+### Bug Fixes
+
+* add not-found text detection to traefik static config read handler ([24e1222](https://github.com/tyevco/pulumi-homelab/commit/24e1222e4353a59f61b4cce3a3b5244c99f55607))
+* add TXT to valid rr types in host override validation ([5526f3b](https://github.com/tyevco/pulumi-homelab/commit/5526f3befd237428265826057fc739b93ce74b33))
+* consistent not-found detection in all read and delete handlers ([b9e9be9](https://github.com/tyevco/pulumi-homelab/commit/b9e9be9dc81b3264bdaa0d7dade7b6d831257b48))
+* consistent not-found handling and test coverage improvements ([398d1af](https://github.com/tyevco/pulumi-homelab/commit/398d1af4a22ecea71cd7aabe8422b90c4ba06aa9))
+* consistent not-found handling, stackToOutputs bug, and test coverage ([f26c586](https://github.com/tyevco/pulumi-homelab/commit/f26c586ddc8e264ac74fdefe11a390483447c01b))
+* harden OPNsense getItem response parsing ([81b1b1c](https://github.com/tyevco/pulumi-homelab/commit/81b1b1c801b9af26326b48871de7572deee9304b))
+* harden OPNsense getItem response parsing and Struct serialization ([9a93e3c](https://github.com/tyevco/pulumi-homelab/commit/9a93e3c2e8adc0cf53b4bff5df5f074c38a899d6))
+* make OPNsense delete handlers match read handlers for not-found detection ([52c60e9](https://github.com/tyevco/pulumi-homelab/commit/52c60e98f789a53d9ad482b5005f4bf657b89b78))
+* use strict undefined checks in stackToOutputs for envFile and composeYaml ([7533718](https://github.com/tyevco/pulumi-homelab/commit/7533718227f750fa734933715f108a46510e0fbb))
+
 ## [0.3.2](https://github.com/tyevco/pulumi-homelab/compare/v0.3.1...v0.3.2) (2026-03-01)
 
 
