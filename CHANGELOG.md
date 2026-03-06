@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.5](https://github.com/tyevco/pulumi-homelab/compare/v0.3.4...v0.3.5) (2026-03-06)
+
+
+### Bug Fixes
+
+* omit Content-Type on GET requests and recreate stack on 404 ([c02fdfb](https://github.com/tyevco/pulumi-homelab/commit/c02fdfb76273cefd4563bb407e8995e4180a08ba))
+* recreate stack on 404 during update ([eae8ca9](https://github.com/tyevco/pulumi-homelab/commit/eae8ca99f9505654ab3ee2f8be8f8d48b4d3b79b))
+
 ## [0.3.4](https://github.com/tyevco/pulumi-homelab/compare/v0.3.3...v0.3.4) (2026-03-01)
 
 
