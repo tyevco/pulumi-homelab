@@ -10,3 +10,4 @@ sdk/nodejs/*.d.ts
 sdk/nodejs/*.js.map
 sdk/nodejs/node_modules/
 examples/*/node_modules/
+coverage/
