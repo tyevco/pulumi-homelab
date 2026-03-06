@@ -127,14 +127,15 @@ export const lxcContainerResource = {
 
     try {
       ensureConfigured();
-      let info = await createLxcContainer(inputs.name, inputs.dist, inputs.release, inputs.arch);
+      await createLxcContainer(inputs.name, inputs.dist, inputs.release, inputs.arch);
 
       if (inputs.config) {
-        info = await saveLxcConfig(inputs.name, inputs.config);
+        await saveLxcConfig(inputs.name, inputs.config);
       }
 
-      info = await startLxcContainer(inputs.name);
+      await startLxcContainer(inputs.name);
 
+      const info = await getLxcContainer(inputs.name);
       const outputs = containerToOutputs(info, inputs);
 
       const response = new providerProto.CreateResponse();

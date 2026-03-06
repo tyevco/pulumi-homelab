@@ -223,8 +223,9 @@ describe("lxcContainer create", () => {
 
   it("creates container, starts it, and returns outputs", async () => {
     const containerInfo = { name: "myct", status: 3, ip: "10.0.0.5", autostart: false, pid: 123, memory: "512MB", config: "" };
-    homelabClient.createLxcContainer.mockResolvedValue(containerInfo);
-    homelabClient.startLxcContainer.mockResolvedValue(containerInfo);
+    homelabClient.createLxcContainer.mockResolvedValue(undefined);
+    homelabClient.startLxcContainer.mockResolvedValue(undefined);
+    homelabClient.getLxcContainer.mockResolvedValue(containerInfo);
 
     const inputs = { name: "myct", dist: "ubuntu", release: "jammy", arch: "amd64" };
     const call = makeCreateCall(inputs);
@@ -234,14 +235,16 @@ describe("lxcContainer create", () => {
     expect(response.getId()).toBe("myct");
     expect(homelabClient.createLxcContainer).toHaveBeenCalledWith("myct", "ubuntu", "jammy", "amd64");
     expect(homelabClient.startLxcContainer).toHaveBeenCalledWith("myct");
+    expect(homelabClient.getLxcContainer).toHaveBeenCalledWith("myct");
     expect(homelabClient.saveLxcConfig).not.toHaveBeenCalled();
   });
 
   it("saves config before starting when config is provided", async () => {
     const containerInfo = { name: "myct", status: 3, ip: "10.0.0.5", autostart: false, pid: 123, memory: "512MB", config: "lxc.net.0.type = veth" };
-    homelabClient.createLxcContainer.mockResolvedValue(containerInfo);
-    homelabClient.saveLxcConfig.mockResolvedValue(containerInfo);
-    homelabClient.startLxcContainer.mockResolvedValue(containerInfo);
+    homelabClient.createLxcContainer.mockResolvedValue(undefined);
+    homelabClient.saveLxcConfig.mockResolvedValue(undefined);
+    homelabClient.startLxcContainer.mockResolvedValue(undefined);
+    homelabClient.getLxcContainer.mockResolvedValue(containerInfo);
 
     const inputs = { name: "myct", dist: "ubuntu", release: "jammy", arch: "amd64", config: "lxc.net.0.type = veth" };
     const call = makeCreateCall(inputs);

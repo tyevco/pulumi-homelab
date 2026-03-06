@@ -43,10 +43,10 @@ describe("LXC client API", () => {
   }
 
   describe("listLxcContainers", () => {
-    it("sends GET to /api/lxc", async () => {
+    it("sends GET to /api/lxc and unwraps containers array", async () => {
       const client = setupConfiguredModule();
       const containers = [{ name: "test", status: 3 }];
-      mockedFetch.mockResolvedValueOnce(mockResponse(containers));
+      mockedFetch.mockResolvedValueOnce(mockResponse({ ok: true, containers }));
 
       const result = await client.listLxcContainers();
 
@@ -58,10 +58,10 @@ describe("LXC client API", () => {
   });
 
   describe("getLxcContainer", () => {
-    it("sends GET to /api/lxc/:name", async () => {
+    it("sends GET to /api/lxc/:name and unwraps container", async () => {
       const client = setupConfiguredModule();
       const container = { name: "myct", status: 3, ip: "10.0.0.1" };
-      mockedFetch.mockResolvedValueOnce(mockResponse(container));
+      mockedFetch.mockResolvedValueOnce(mockResponse({ ok: true, container }));
 
       const result = await client.getLxcContainer("myct");
 
@@ -72,10 +72,25 @@ describe("LXC client API", () => {
     });
   });
 
+  describe("getLxcDistributions", () => {
+    it("sends GET to /api/lxc/distributions and unwraps distributions", async () => {
+      const client = setupConfiguredModule();
+      const distributions = ["ubuntu", "debian", "alpine"];
+      mockedFetch.mockResolvedValueOnce(mockResponse({ ok: true, distributions }));
+
+      const result = await client.getLxcDistributions();
+
+      expect(result).toEqual(distributions);
+      const [url, opts] = mockedFetch.mock.calls[0] as [string, any];
+      expect(url).toBe("https://homelab.local/api/lxc/distributions");
+      expect(opts.method).toBe("GET");
+    });
+  });
+
   describe("createLxcContainer", () => {
     it("sends POST to /api/lxc with body", async () => {
       const client = setupConfiguredModule();
-      mockedFetch.mockResolvedValueOnce(mockResponse({ name: "newct", status: 0 }));
+      mockedFetch.mockResolvedValueOnce(mockResponse({ ok: true, msg: "Container created" }));
 
       await client.createLxcContainer("newct", "ubuntu", "jammy", "amd64");
 
@@ -93,7 +108,7 @@ describe("LXC client API", () => {
   describe("deleteLxcContainer", () => {
     it("sends DELETE to /api/lxc/:name", async () => {
       const client = setupConfiguredModule();
-      mockedFetch.mockResolvedValueOnce(mock204());
+      mockedFetch.mockResolvedValueOnce(mockResponse({ ok: true, msg: "Container deleted" }));
 
       await client.deleteLxcContainer("oldct");
 
@@ -106,7 +121,7 @@ describe("LXC client API", () => {
   describe("saveLxcConfig", () => {
     it("sends PUT to /api/lxc/:name/config with body", async () => {
       const client = setupConfiguredModule();
-      mockedFetch.mockResolvedValueOnce(mockResponse({ name: "myct", config: "lxc.net.0.type = veth" }));
+      mockedFetch.mockResolvedValueOnce(mockResponse({ ok: true, msg: "Config saved" }));
 
       await client.saveLxcConfig("myct", "lxc.net.0.type = veth");
 
@@ -120,7 +135,7 @@ describe("LXC client API", () => {
   describe("startLxcContainer", () => {
     it("sends POST to /api/lxc/:name/start", async () => {
       const client = setupConfiguredModule();
-      mockedFetch.mockResolvedValueOnce(mockResponse({ name: "myct", status: 3 }));
+      mockedFetch.mockResolvedValueOnce(mockResponse({ ok: true, msg: "Container started" }));
 
       await client.startLxcContainer("myct");
 
@@ -133,7 +148,7 @@ describe("LXC client API", () => {
   describe("stopLxcContainer", () => {
     it("sends POST to /api/lxc/:name/stop", async () => {
       const client = setupConfiguredModule();
-      mockedFetch.mockResolvedValueOnce(mockResponse({ name: "myct", status: 1 }));
+      mockedFetch.mockResolvedValueOnce(mockResponse({ ok: true, msg: "Container stopped" }));
 
       await client.stopLxcContainer("myct");
 

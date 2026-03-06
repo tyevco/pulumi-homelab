@@ -189,11 +189,18 @@ export interface LxcContainerInfo {
 
 // LXC API functions
 export async function listLxcContainers(): Promise<LxcContainerInfo[]> {
-  return request<LxcContainerInfo[]>("GET", "/api/lxc");
+  const res = await request<{ ok: boolean; containers: LxcContainerInfo[] }>("GET", "/api/lxc");
+  return res.containers;
 }
 
 export async function getLxcContainer(name: string): Promise<LxcContainerInfo> {
-  return request<LxcContainerInfo>("GET", `/api/lxc/${encodeURIComponent(name)}`);
+  const res = await request<{ ok: boolean; container: LxcContainerInfo }>("GET", `/api/lxc/${encodeURIComponent(name)}`);
+  return res.container;
+}
+
+export async function getLxcDistributions(): Promise<string[]> {
+  const res = await request<{ ok: boolean; distributions: string[] }>("GET", "/api/lxc/distributions");
+  return res.distributions;
 }
 
 export async function createLxcContainer(
@@ -201,22 +208,22 @@ export async function createLxcContainer(
   dist: string,
   release: string,
   arch: string,
-): Promise<LxcContainerInfo> {
-  return request<LxcContainerInfo>("POST", "/api/lxc", { name, dist, release, arch });
+): Promise<void> {
+  await request<{ ok: boolean; msg: string }>("POST", "/api/lxc", { name, dist, release, arch });
 }
 
 export async function deleteLxcContainer(name: string): Promise<void> {
-  await request<void>("DELETE", `/api/lxc/${encodeURIComponent(name)}`);
+  await request<{ ok: boolean; msg: string }>("DELETE", `/api/lxc/${encodeURIComponent(name)}`);
 }
 
-export async function saveLxcConfig(name: string, config: string): Promise<LxcContainerInfo> {
-  return request<LxcContainerInfo>("PUT", `/api/lxc/${encodeURIComponent(name)}/config`, { config });
+export async function saveLxcConfig(name: string, config: string): Promise<void> {
+  await request<{ ok: boolean; msg: string }>("PUT", `/api/lxc/${encodeURIComponent(name)}/config`, { config });
 }
 
-export async function startLxcContainer(name: string): Promise<LxcContainerInfo> {
-  return request<LxcContainerInfo>("POST", `/api/lxc/${encodeURIComponent(name)}/start`);
+export async function startLxcContainer(name: string): Promise<void> {
+  await request<{ ok: boolean; msg: string }>("POST", `/api/lxc/${encodeURIComponent(name)}/start`);
 }
 
-export async function stopLxcContainer(name: string): Promise<LxcContainerInfo> {
-  return request<LxcContainerInfo>("POST", `/api/lxc/${encodeURIComponent(name)}/stop`);
+export async function stopLxcContainer(name: string): Promise<void> {
+  await request<{ ok: boolean; msg: string }>("POST", `/api/lxc/${encodeURIComponent(name)}/stop`);
 }
