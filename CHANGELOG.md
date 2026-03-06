@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.6](https://github.com/tyevco/pulumi-homelab/compare/v0.3.5...v0.3.6) (2026-03-06)
+
+
+### Bug Fixes
+
+* correct LXC API response unwrapping and add getLxcDistributions ([34bcc79](https://github.com/tyevco/pulumi-homelab/commit/34bcc79b33a23b5309cbc00b9fe49c1a0f644848))
+* correct LXC API response unwrapping and add getLxcDistributions ([cba1789](https://github.com/tyevco/pulumi-homelab/commit/cba1789f39e975fdb8df30b42665614c588352c1))
+
 ## [0.3.5](https://github.com/tyevco/pulumi-homelab/compare/v0.3.4...v0.3.5) (2026-03-06)
 
 
