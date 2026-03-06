@@ -261,6 +261,27 @@ export const stackResource = {
       response.setProperties(objectToStruct(outputs));
       callback(null, response);
     } catch (err: any) {
+      // Stack was deleted externally — recreate it and continue
+      if (err.message && (err.message.includes("404") || err.message.includes("not found"))) {
+        try {
+          await createStack(
+            inputs.name,
+            inputs.composeYaml,
+            inputs.envFile,
+            inputs.running !== false,
+            inputs.composeOverride,
+            inputs.autostart,
+            inputs.displayName,
+          );
+          const info = await getStack(inputs.name);
+          const response = new providerProto.UpdateResponse();
+          response.setProperties(objectToStruct(stackToOutputs(info, inputs)));
+          callback(null, response);
+        } catch (createErr: any) {
+          callback({ code: grpc.status.INTERNAL, message: `Failed to recreate stack: ${createErr.message}` });
+        }
+        return;
+      }
       callback({ code: grpc.status.INTERNAL, message: `Failed to update stack: ${err.message}` });
     }
   },
