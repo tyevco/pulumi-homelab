@@ -99,6 +99,24 @@ async function request<T>(method: string, path: string, body?: any): Promise<T> 
   return res.json();
 }
 
+// Agent interfaces
+export interface AgentCapabilities {
+  lxcAvailable?: boolean;
+  version?: string;
+}
+
+export interface AgentInfo {
+  url: string;
+  username: string;
+  endpoint: string;
+  capabilities: AgentCapabilities;
+}
+
+export async function listAgents(): Promise<AgentInfo[]> {
+  const res = await request<{ ok: boolean; agents: AgentInfo[] }>("GET", "/api/agents");
+  return res.agents;
+}
+
 export async function listStacks(): Promise<StackInfo[]> {
   return request<StackInfo[]>("GET", "/api/stacks");
 }
