@@ -48,9 +48,10 @@ const providerImpl = {
     // Extract Homelab configuration (unwrap secrets)
     const url = unwrapSecret(args["url"] || args["homelab:config:url"]) || "";
     const apiKey = unwrapSecret(args["apiKey"] || args["homelab:config:apiKey"]) || "";
+    const endpoint = unwrapSecret(args["endpoint"] || args["homelab:config:endpoint"]) || undefined;
 
     if (url && apiKey) {
-      configureClient({ url, apiKey });
+      configureClient({ url, apiKey, endpoint });
     }
 
     // Extract OPNsense configuration

@@ -157,4 +157,84 @@ describe("LXC client API", () => {
       expect(opts.method).toBe("POST");
     });
   });
+
+  describe("endpoint routing", () => {
+    function setupWithEndpoint(endpoint: string) {
+      const client = require("../src/homelabClient");
+      client.configureClient({ url: "https://homelab.local", apiKey: "key", endpoint });
+      return client;
+    }
+
+    it("appends ?endpoint= to listLxcContainers", async () => {
+      const client = setupWithEndpoint("agent1");
+      mockedFetch.mockResolvedValueOnce(mockResponse({ ok: true, containers: [] }));
+      await client.listLxcContainers();
+      const [url] = mockedFetch.mock.calls[0] as [string, any];
+      expect(url).toBe("https://homelab.local/api/lxc?endpoint=agent1");
+    });
+
+    it("appends ?endpoint= to getLxcContainer", async () => {
+      const client = setupWithEndpoint("agent1");
+      mockedFetch.mockResolvedValueOnce(mockResponse({ ok: true, container: { name: "ct" } }));
+      await client.getLxcContainer("ct");
+      const [url] = mockedFetch.mock.calls[0] as [string, any];
+      expect(url).toBe("https://homelab.local/api/lxc/ct?endpoint=agent1");
+    });
+
+    it("appends ?endpoint= to getLxcDistributions", async () => {
+      const client = setupWithEndpoint("agent1");
+      mockedFetch.mockResolvedValueOnce(mockResponse({ ok: true, distributions: [] }));
+      await client.getLxcDistributions();
+      const [url] = mockedFetch.mock.calls[0] as [string, any];
+      expect(url).toBe("https://homelab.local/api/lxc/distributions?endpoint=agent1");
+    });
+
+    it("appends ?endpoint= to createLxcContainer", async () => {
+      const client = setupWithEndpoint("agent1");
+      mockedFetch.mockResolvedValueOnce(mockResponse({ ok: true, msg: "Container created" }));
+      await client.createLxcContainer("ct", "ubuntu", "jammy", "amd64");
+      const [url] = mockedFetch.mock.calls[0] as [string, any];
+      expect(url).toBe("https://homelab.local/api/lxc?endpoint=agent1");
+    });
+
+    it("appends ?endpoint= to startLxcContainer", async () => {
+      const client = setupWithEndpoint("agent1");
+      mockedFetch.mockResolvedValueOnce(mockResponse({ ok: true, msg: "Container started" }));
+      await client.startLxcContainer("ct");
+      const [url] = mockedFetch.mock.calls[0] as [string, any];
+      expect(url).toBe("https://homelab.local/api/lxc/ct/start?endpoint=agent1");
+    });
+
+    it("appends ?endpoint= to stopLxcContainer", async () => {
+      const client = setupWithEndpoint("agent1");
+      mockedFetch.mockResolvedValueOnce(mockResponse({ ok: true, msg: "Container stopped" }));
+      await client.stopLxcContainer("ct");
+      const [url] = mockedFetch.mock.calls[0] as [string, any];
+      expect(url).toBe("https://homelab.local/api/lxc/ct/stop?endpoint=agent1");
+    });
+
+    it("appends ?endpoint= to saveLxcConfig", async () => {
+      const client = setupWithEndpoint("agent1");
+      mockedFetch.mockResolvedValueOnce(mockResponse({ ok: true, msg: "Config saved" }));
+      await client.saveLxcConfig("ct", "lxc.net.0.type = veth");
+      const [url] = mockedFetch.mock.calls[0] as [string, any];
+      expect(url).toBe("https://homelab.local/api/lxc/ct/config?endpoint=agent1");
+    });
+
+    it("appends ?endpoint= to deleteLxcContainer", async () => {
+      const client = setupWithEndpoint("agent1");
+      mockedFetch.mockResolvedValueOnce(mockResponse({ ok: true, msg: "Container deleted" }));
+      await client.deleteLxcContainer("ct");
+      const [url] = mockedFetch.mock.calls[0] as [string, any];
+      expect(url).toBe("https://homelab.local/api/lxc/ct?endpoint=agent1");
+    });
+
+    it("encodes special characters in endpoint name", async () => {
+      const client = setupWithEndpoint("my agent");
+      mockedFetch.mockResolvedValueOnce(mockResponse({ ok: true, containers: [] }));
+      await client.listLxcContainers();
+      const [url] = mockedFetch.mock.calls[0] as [string, any];
+      expect(url).toBe("https://homelab.local/api/lxc?endpoint=my%20agent");
+    });
+  });
 });

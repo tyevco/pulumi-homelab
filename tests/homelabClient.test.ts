@@ -303,6 +303,24 @@ describe("Homelab client API", () => {
     });
   });
 
+  describe("listAgents", () => {
+    it("sends GET to /api/agents and unwraps agents array", async () => {
+      const client = setupConfiguredModule();
+      const agents = [
+        { url: "", username: "", endpoint: "", capabilities: { lxcAvailable: true, version: "1.9.2" } },
+        { url: "https://agent1.local", username: "admin", endpoint: "agent1.local", capabilities: { lxcAvailable: false, version: "1.9.2" } },
+      ];
+      mockedFetch.mockResolvedValueOnce(mockResponse({ ok: true, agents }));
+
+      const result = await client.listAgents();
+
+      expect(result).toEqual(agents);
+      const [url, opts] = mockedFetch.mock.calls[0] as [string, any];
+      expect(url).toBe("https://homelab.local/api/agents");
+      expect(opts.method).toBe("GET");
+    });
+  });
+
   describe("URL trailing slash handling", () => {
     it("strips trailing slashes from base URL", async () => {
       const client = require("../src/homelabClient");

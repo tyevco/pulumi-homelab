@@ -3,6 +3,7 @@ import fetch from "cross-fetch";
 export interface HomelabClientConfig {
   url: string;
   apiKey: string;
+  endpoint?: string;
 }
 
 export interface ContainerInfo {
@@ -66,6 +67,11 @@ function headers(): Record<string, string> {
   };
 }
 
+function endpointQuery(): string {
+  const config = ensureConfigured();
+  return config.endpoint ? `?endpoint=${encodeURIComponent(config.endpoint)}` : "";
+}
+
 async function request<T>(method: string, path: string, body?: any): Promise<T> {
   const url = `${baseUrl()}${path}`;
   const res = await fetch(url, {
@@ -91,6 +97,24 @@ async function request<T>(method: string, path: string, body?: any): Promise<T> 
   }
 
   return res.json();
+}
+
+// Agent interfaces
+export interface AgentCapabilities {
+  lxcAvailable?: boolean;
+  version?: string;
+}
+
+export interface AgentInfo {
+  url: string;
+  username: string;
+  endpoint: string;
+  capabilities: AgentCapabilities;
+}
+
+export async function listAgents(): Promise<AgentInfo[]> {
+  const res = await request<{ ok: boolean; agents: AgentInfo[] }>("GET", "/api/agents");
+  return res.agents;
 }
 
 export async function listStacks(): Promise<StackInfo[]> {
@@ -189,17 +213,17 @@ export interface LxcContainerInfo {
 
 // LXC API functions
 export async function listLxcContainers(): Promise<LxcContainerInfo[]> {
-  const res = await request<{ ok: boolean; containers: LxcContainerInfo[] }>("GET", "/api/lxc");
+  const res = await request<{ ok: boolean; containers: LxcContainerInfo[] }>("GET", `/api/lxc${endpointQuery()}`);
   return res.containers;
 }
 
 export async function getLxcContainer(name: string): Promise<LxcContainerInfo> {
-  const res = await request<{ ok: boolean; container: LxcContainerInfo }>("GET", `/api/lxc/${encodeURIComponent(name)}`);
+  const res = await request<{ ok: boolean; container: LxcContainerInfo }>("GET", `/api/lxc/${encodeURIComponent(name)}${endpointQuery()}`);
   return res.container;
 }
 
 export async function getLxcDistributions(): Promise<string[]> {
-  const res = await request<{ ok: boolean; distributions: string[] }>("GET", "/api/lxc/distributions");
+  const res = await request<{ ok: boolean; distributions: string[] }>("GET", `/api/lxc/distributions${endpointQuery()}`);
   return res.distributions;
 }
 
@@ -209,21 +233,21 @@ export async function createLxcContainer(
   release: string,
   arch: string,
 ): Promise<void> {
-  await request<{ ok: boolean; msg: string }>("POST", "/api/lxc", { name, dist, release, arch });
+  await request<{ ok: boolean; msg: string }>("POST", `/api/lxc${endpointQuery()}`, { name, dist, release, arch });
 }
 
 export async function deleteLxcContainer(name: string): Promise<void> {
-  await request<{ ok: boolean; msg: string }>("DELETE", `/api/lxc/${encodeURIComponent(name)}`);
+  await request<{ ok: boolean; msg: string }>("DELETE", `/api/lxc/${encodeURIComponent(name)}${endpointQuery()}`);
 }
 
 export async function saveLxcConfig(name: string, config: string): Promise<void> {
-  await request<{ ok: boolean; msg: string }>("PUT", `/api/lxc/${encodeURIComponent(name)}/config`, { config });
+  await request<{ ok: boolean; msg: string }>("PUT", `/api/lxc/${encodeURIComponent(name)}/config${endpointQuery()}`, { config });
 }
 
 export async function startLxcContainer(name: string): Promise<void> {
-  await request<{ ok: boolean; msg: string }>("POST", `/api/lxc/${encodeURIComponent(name)}/start`);
+  await request<{ ok: boolean; msg: string }>("POST", `/api/lxc/${encodeURIComponent(name)}/start${endpointQuery()}`);
 }
 
 export async function stopLxcContainer(name: string): Promise<void> {
-  await request<{ ok: boolean; msg: string }>("POST", `/api/lxc/${encodeURIComponent(name)}/stop`);
+  await request<{ ok: boolean; msg: string }>("POST", `/api/lxc/${encodeURIComponent(name)}/stop${endpointQuery()}`);
 }
