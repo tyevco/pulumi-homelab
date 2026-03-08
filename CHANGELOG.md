@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.4.0](https://github.com/tyevco/pulumi-homelab/compare/v0.3.6...v0.4.0) (2026-03-08)
+
+
+### Features
+
+* add agent endpoint routing to LXC API client ([cad01cc](https://github.com/tyevco/pulumi-homelab/commit/cad01ccefb289de3ad7e4fd1d5fd1582cf538607))
+* add agent endpoint routing to LXC API client ([c72614c](https://github.com/tyevco/pulumi-homelab/commit/c72614c57555f38bb366873a72a3691bfaa89c0b))
+* add listAgents client function for GET /api/agents ([de774d8](https://github.com/tyevco/pulumi-homelab/commit/de774d8cb4b1957a20bc6a0003fcf1a5815d3f82))
+
 ## [0.3.6](https://github.com/tyevco/pulumi-homelab/compare/v0.3.5...v0.3.6) (2026-03-06)
 
 
