@@ -319,6 +319,48 @@ describe("Homelab client API", () => {
       expect(url).toBe("https://homelab.local/api/agents");
       expect(opts.method).toBe("GET");
     });
+
+    it("returns only local server entry when no remote agents configured", async () => {
+      const client = setupConfiguredModule();
+      const agents = [
+        { url: "", username: "", endpoint: "", capabilities: { lxcAvailable: false, version: "1.9.2" } },
+      ];
+      mockedFetch.mockResolvedValueOnce(mockResponse({ ok: true, agents }));
+
+      const result = await client.listAgents();
+
+      expect(result).toHaveLength(1);
+      expect(result[0].endpoint).toBe("");
+    });
+
+    it("returns empty array when no agents present", async () => {
+      const client = setupConfiguredModule();
+      mockedFetch.mockResolvedValueOnce(mockResponse({ ok: true, agents: [] }));
+
+      const result = await client.listAgents();
+
+      expect(result).toEqual([]);
+    });
+
+    it("handles agents with partial capabilities", async () => {
+      const client = setupConfiguredModule();
+      const agents = [
+        { url: "https://agent2.local", username: "user", endpoint: "agent2.local", capabilities: {} },
+      ];
+      mockedFetch.mockResolvedValueOnce(mockResponse({ ok: true, agents }));
+
+      const result = await client.listAgents();
+
+      expect(result[0].capabilities).toEqual({});
+      expect(result[0].capabilities.lxcAvailable).toBeUndefined();
+    });
+
+    it("throws on server error", async () => {
+      const client = setupConfiguredModule();
+      mockedFetch.mockResolvedValueOnce(mockResponse({ ok: false, msg: "Internal server error" }, 500));
+
+      await expect(client.listAgents()).rejects.toThrow("500");
+    });
   });
 
   describe("URL trailing slash handling", () => {
