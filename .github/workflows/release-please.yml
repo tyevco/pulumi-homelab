@@ -40,6 +40,12 @@ jobs:
           cache: npm
           registry-url: https://registry.npmjs.org
 
+      - name: Sync SDK version from root package.json
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          jq --arg v "$VERSION" '.version = $v' sdk/nodejs/package.json > sdk/nodejs/package.json.tmp
+          mv sdk/nodejs/package.json.tmp sdk/nodejs/package.json
+
       - name: Install dependencies
         run: npm ci
 
