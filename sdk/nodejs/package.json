@@ -25,6 +25,9 @@
     "directory": "sdk/nodejs"
   },
   "license": "Apache-2.0",
+  "publishConfig": {
+    "access": "public"
+  },
   "pulumi": {
     "resource": true,
     "pluginDownloadURL": "github://api.github.com/tyevco/pulumi-homelab"

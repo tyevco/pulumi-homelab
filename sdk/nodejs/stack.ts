@@ -13,6 +13,13 @@ export interface ContainerInfo {
   ports: string[];
 }
 
+export interface ExtraFile {
+  /** File name. Must match ^[a-zA-Z0-9][a-zA-Z0-9._-]*$. */
+  name: string;
+  /** File content. */
+  content: string;
+}
+
 export interface StackArgs {
   /** The stack name. Must be unique on the homelab server. */
   name: pulumi.Input<string>;
@@ -28,6 +35,8 @@ export interface StackArgs {
   displayName?: pulumi.Input<string>;
   /** Whether the stack should be running (default: true). */
   running?: pulumi.Input<boolean>;
+  /** Optional extra files to include alongside the Docker Compose stack. */
+  extraFiles?: pulumi.Input<pulumi.Input<ExtraFile>[]>;
 }
 
 /**
@@ -60,11 +69,13 @@ export class Stack extends pulumi.CustomResource {
   public readonly running!: pulumi.Output<boolean>;
   public readonly status!: pulumi.Output<string>;
   public readonly containers!: pulumi.Output<ContainerInfo[]>;
+  public readonly extraFiles!: pulumi.Output<ExtraFile[]>;
 
   constructor(name: string, args: StackArgs, opts?: pulumi.CustomResourceOptions) {
     super("homelab:index:Stack", name, {
       status: undefined,
       containers: undefined,
+      extraFiles: undefined,
       ...args,
     }, {
       version: PLUGIN_VERSION,
