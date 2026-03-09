@@ -1,5 +1,5 @@
 {
-  "name": "pulumi-homelab",
+  "name": "@tyevco/pulumi-homelab",
   "version": "0.5.0",
   "description": "A Pulumi native provider for managing homelab infrastructure via the homelab REST API",
   "main": "dist/index.js",
