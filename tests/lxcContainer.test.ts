@@ -4,6 +4,7 @@ import { lxcContainerResource } from "../src/resources/lxcContainer";
 jest.mock("../src/homelabClient", () => ({
   ensureConfigured: jest.fn(),
   createLxcContainer: jest.fn(),
+  cloneLxcContainer: jest.fn(),
   getLxcContainer: jest.fn(),
   saveLxcConfig: jest.fn(),
   startLxcContainer: jest.fn(),
@@ -79,6 +80,24 @@ describe("lxcContainer check", () => {
     expect(props).toContain("dist");
     expect(props).toContain("release");
     expect(props).toContain("arch");
+  });
+
+  it("skips dist/release/arch requirement when sourceContainer is set", async () => {
+    const call = makeCheckCall({ name: "new-ct", sourceContainer: "base" });
+    const { err, response } = await callHandler(lxcContainerResource.check, call);
+
+    expect(err).toBeNull();
+    const failures = response.getFailuresList();
+    expect(failures.length).toBe(0);
+  });
+
+  it("returns failure when sourceContainer has invalid characters", async () => {
+    const call = makeCheckCall({ name: "new-ct", sourceContainer: "INVALID NAME!" });
+    const { response } = await callHandler(lxcContainerResource.check, call);
+
+    const failures = response.getFailuresList();
+    expect(failures.length).toBe(1);
+    expect(failures[0].getProperty()).toBe("sourceContainer");
   });
 
   it("defaults autostart to false", async () => {
@@ -271,6 +290,36 @@ describe("lxcContainer create", () => {
     expect(err).not.toBeNull();
     expect(err.message).toContain("Failed to create LXC container");
     expect(err.message).toContain("connection refused");
+  });
+
+  it("uses cloneLxcContainer instead of create when sourceContainer is set", async () => {
+    const containerInfo = { name: "new-ct", status: 3, ip: "10.0.0.6", autostart: false, pid: 789, memory: "256MB", config: "" };
+    homelabClient.cloneLxcContainer.mockResolvedValue(undefined);
+    homelabClient.startLxcContainer.mockResolvedValue(undefined);
+    homelabClient.getLxcContainer.mockResolvedValue(containerInfo);
+
+    const inputs = { name: "new-ct", sourceContainer: "base" };
+    const call = makeCreateCall(inputs);
+    const { err, response } = await callHandler(lxcContainerResource.create, call);
+
+    expect(err).toBeNull();
+    expect(response.getId()).toBe("new-ct");
+    expect(homelabClient.cloneLxcContainer).toHaveBeenCalledWith("base", "new-ct", undefined);
+    expect(homelabClient.createLxcContainer).not.toHaveBeenCalled();
+    expect(homelabClient.startLxcContainer).toHaveBeenCalledWith("new-ct");
+  });
+
+  it("passes initialConfig to cloneLxcContainer when provided", async () => {
+    const containerInfo = { name: "new-ct", status: 3, ip: "10.0.0.6", autostart: false, pid: 789, memory: "256MB", config: "" };
+    homelabClient.cloneLxcContainer.mockResolvedValue(undefined);
+    homelabClient.startLxcContainer.mockResolvedValue(undefined);
+    homelabClient.getLxcContainer.mockResolvedValue(containerInfo);
+
+    const inputs = { name: "new-ct", sourceContainer: "base", initialConfig: "lxc.net.0.type = veth" };
+    const call = makeCreateCall(inputs);
+    await callHandler(lxcContainerResource.create, call);
+
+    expect(homelabClient.cloneLxcContainer).toHaveBeenCalledWith("base", "new-ct", "lxc.net.0.type = veth");
   });
 });
 

@@ -363,6 +363,155 @@ describe("Homelab client API", () => {
     });
   });
 
+  describe("createStack with extraFiles", () => {
+    it("sends extraFiles in POST body", async () => {
+      const client = setupConfiguredModule();
+      mockedFetch.mockResolvedValueOnce(mockResponse({ name: "new", status: "running" }));
+
+      const extraFiles = [{ name: "prometheus.yml", content: "scrape_configs: []" }];
+      await client.createStack("new", "version: '3'", "", true, "", false, "", extraFiles);
+
+      const [, opts] = mockedFetch.mock.calls[0] as [string, any];
+      const body = JSON.parse(opts.body);
+      expect(body.extraFiles).toEqual(extraFiles);
+    });
+
+    it("sends empty extraFiles array when not provided", async () => {
+      const client = setupConfiguredModule();
+      mockedFetch.mockResolvedValueOnce(mockResponse({ name: "new", status: "running" }));
+
+      await client.createStack("new", "version: '3'");
+
+      const [, opts] = mockedFetch.mock.calls[0] as [string, any];
+      const body = JSON.parse(opts.body);
+      expect(body.extraFiles).toEqual([]);
+    });
+  });
+
+  describe("updateStack with extraFiles", () => {
+    it("sends extraFiles in PUT body when provided", async () => {
+      const client = setupConfiguredModule();
+      mockedFetch.mockResolvedValueOnce(mockResponse({ name: "web", status: "running" }));
+
+      const extraFiles = [{ name: "config.yml", content: "key: value" }];
+      await client.updateStack("web", "version: '3'", "", undefined, undefined, undefined, extraFiles);
+
+      const [, opts] = mockedFetch.mock.calls[0] as [string, any];
+      const body = JSON.parse(opts.body);
+      expect(body.extraFiles).toEqual(extraFiles);
+    });
+  });
+
+  describe("cloneLxcContainer", () => {
+    it("sends POST to /api/lxc/clone with sourceName and destName", async () => {
+      const client = setupConfiguredModule();
+      mockedFetch.mockResolvedValueOnce(mockResponse({ ok: true, msg: "Container cloned", container: {} }));
+
+      await client.cloneLxcContainer("base", "new-ct");
+
+      const [url, opts] = mockedFetch.mock.calls[0] as [string, any];
+      expect(url).toBe("https://homelab.local/api/lxc/clone");
+      expect(opts.method).toBe("POST");
+      const body = JSON.parse(opts.body);
+      expect(body.sourceName).toBe("base");
+      expect(body.destName).toBe("new-ct");
+      expect(body.initialConfig).toBe("");
+    });
+
+    it("sends initialConfig when provided", async () => {
+      const client = setupConfiguredModule();
+      mockedFetch.mockResolvedValueOnce(mockResponse({ ok: true, msg: "Container cloned", container: {} }));
+
+      await client.cloneLxcContainer("base", "new-ct", "lxc.net.0.type = veth");
+
+      const [, opts] = mockedFetch.mock.calls[0] as [string, any];
+      const body = JSON.parse(opts.body);
+      expect(body.initialConfig).toBe("lxc.net.0.type = veth");
+    });
+  });
+
+  describe("getNotificationSettings", () => {
+    it("sends GET to /api/notifications and unwraps data", async () => {
+      const client = setupConfiguredModule();
+      const settings = { ntfyEnabled: true, ntfyUrl: "https://ntfy.sh/topic" };
+      mockedFetch.mockResolvedValueOnce(mockResponse({ ok: true, data: settings }));
+
+      const result = await client.getNotificationSettings();
+
+      expect(result).toEqual(settings);
+      const [url, opts] = mockedFetch.mock.calls[0] as [string, any];
+      expect(url).toBe("https://homelab.local/api/notifications");
+      expect(opts.method).toBe("GET");
+    });
+  });
+
+  describe("saveNotificationSettings", () => {
+    it("sends PUT to /api/notifications with settings body", async () => {
+      const client = setupConfiguredModule();
+      const settings = { ntfyEnabled: true, ntfyUrl: "https://ntfy.sh/topic" };
+      mockedFetch.mockResolvedValueOnce(mockResponse({ ok: true, data: settings }));
+
+      const result = await client.saveNotificationSettings(settings);
+
+      expect(result).toEqual(settings);
+      const [url, opts] = mockedFetch.mock.calls[0] as [string, any];
+      expect(url).toBe("https://homelab.local/api/notifications");
+      expect(opts.method).toBe("PUT");
+      expect(JSON.parse(opts.body)).toEqual(settings);
+    });
+  });
+
+  describe("listUnraidVms", () => {
+    it("sends GET to /api/unraid/vms and unwraps vms", async () => {
+      const client = setupConfiguredModule();
+      const vms = [{ name: "ubuntu", state: "started" }, { name: "windows", state: "stopped" }];
+      mockedFetch.mockResolvedValueOnce(mockResponse({ ok: true, vms }));
+
+      const result = await client.listUnraidVms("unraid-agent");
+
+      expect(result).toEqual(vms);
+      const [url, opts] = mockedFetch.mock.calls[0] as [string, any];
+      expect(url).toBe("https://homelab.local/api/unraid/vms?endpoint=unraid-agent");
+      expect(opts.method).toBe("GET");
+    });
+
+    it("sends GET without endpoint query when endpoint is omitted", async () => {
+      const client = setupConfiguredModule();
+      mockedFetch.mockResolvedValueOnce(mockResponse({ ok: true, vms: [] }));
+
+      await client.listUnraidVms();
+
+      const [url] = mockedFetch.mock.calls[0] as [string, any];
+      expect(url).toBe("https://homelab.local/api/unraid/vms");
+    });
+  });
+
+  describe("startUnraidVm", () => {
+    it("sends POST to /api/unraid/vms/:name/start with endpoint", async () => {
+      const client = setupConfiguredModule();
+      mockedFetch.mockResolvedValueOnce(mockResponse({ ok: true, msg: "Started" }));
+
+      await client.startUnraidVm("ubuntu", "unraid-agent");
+
+      const [url, opts] = mockedFetch.mock.calls[0] as [string, any];
+      expect(url).toBe("https://homelab.local/api/unraid/vms/ubuntu/start?endpoint=unraid-agent");
+      expect(opts.method).toBe("POST");
+    });
+  });
+
+  describe("stopUnraidVm", () => {
+    it("sends POST to /api/unraid/vms/:name/stop with endpoint", async () => {
+      const client = setupConfiguredModule();
+      mockedFetch.mockResolvedValueOnce(mockResponse({ ok: true, msg: "Stopped" }));
+
+      await client.stopUnraidVm("ubuntu", "unraid-agent");
+
+      const [url, opts] = mockedFetch.mock.calls[0] as [string, any];
+      expect(url).toBe("https://homelab.local/api/unraid/vms/ubuntu/stop?endpoint=unraid-agent");
+      expect(opts.method).toBe("POST");
+    });
+  });
+
   describe("URL trailing slash handling", () => {
     it("strips trailing slashes from base URL", async () => {
       const client = require("../src/homelabClient");
