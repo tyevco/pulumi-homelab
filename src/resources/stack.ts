@@ -9,6 +9,7 @@ import {
   stopStack,
   ensureConfigured,
   StackInfo,
+  ExtraFile,
 } from "../homelabClient";
 import { diffCompose } from "../composeDiff";
 import { diffEnvFile } from "../envDiff";
@@ -38,6 +39,7 @@ function stackToOutputs(info: StackInfo, inputs: Record<string, any>): Record<st
     running: inputs.running !== false,
     status: info.status,
     containers: info.containers || [],
+    extraFiles: info.extraFiles || [],
   };
 }
 
@@ -51,6 +53,16 @@ export const stackResource = {
     }
     if (!inputs.composeYaml) {
       failures.push(makeCheckFailure("composeYaml", "composeYaml is required"));
+    }
+
+    // Validate extraFiles names if provided
+    if (Array.isArray(inputs.extraFiles)) {
+      for (let i = 0; i < inputs.extraFiles.length; i++) {
+        const file = inputs.extraFiles[i];
+        if (!file || typeof file.name !== "string" || !/^[a-zA-Z0-9][a-zA-Z0-9._-]*$/.test(file.name)) {
+          failures.push(makeCheckFailure(`extraFiles[${i}].name`, `extraFiles[${i}].name must match ^[a-zA-Z0-9][a-zA-Z0-9._-]*$`));
+        }
+      }
     }
 
     // Default running to true if not specified
@@ -112,6 +124,12 @@ export const stackResource = {
       }
     }
 
+    // ExtraFiles deep compare
+    if (JSON.stringify(olds.extraFiles || []) !== JSON.stringify(news.extraFiles || [])) {
+      diffs.push("extraFiles");
+      setDetailedDiff(detailedDiffMap, "extraFiles", "UPDATE");
+    }
+
     // Simple properties
     if (olds.running !== news.running) {
       diffs.push("running");
@@ -158,7 +176,7 @@ export const stackResource = {
     try {
       ensureConfigured();
       const shouldStart = inputs.running !== false;
-      const info = await createStack(inputs.name, inputs.composeYaml, inputs.envFile, shouldStart, inputs.composeOverride, inputs.autostart, inputs.displayName);
+      const info = await createStack(inputs.name, inputs.composeYaml, inputs.envFile, shouldStart, inputs.composeOverride, inputs.autostart, inputs.displayName, inputs.extraFiles);
       const outputs = stackToOutputs(info, inputs);
 
       const response = new providerProto.CreateResponse();
@@ -189,6 +207,7 @@ export const stackResource = {
         running: isRunning,
         status: info.status,
         containers: info.containers || [],
+        extraFiles: info.extraFiles || [],
       };
 
       const response = new providerProto.ReadResponse();
@@ -202,6 +221,7 @@ export const stackResource = {
         autostart: info.autostart || false,
         displayName: info.displayName || "",
         running: currentInputs.running !== undefined ? currentInputs.running : isRunning,
+        extraFiles: info.extraFiles || [],
       }));
       callback(null, response);
     } catch (err: any) {
@@ -238,11 +258,12 @@ export const stackResource = {
       const overrideChanged = (olds.composeOverride || "") !== (inputs.composeOverride || "");
       const autostartChanged = (olds.autostart || false) !== (inputs.autostart || false);
       const displayNameChanged = (olds.displayName || "") !== (inputs.displayName || "");
+      const extraFilesChanged = JSON.stringify(olds.extraFiles || []) !== JSON.stringify(inputs.extraFiles || []);
       const runningChanged = olds.running !== inputs.running;
 
-      if (composeChanged || envChanged || overrideChanged || autostartChanged || displayNameChanged) {
+      if (composeChanged || envChanged || overrideChanged || autostartChanged || displayNameChanged || extraFilesChanged) {
         // Update the stack (PUT will restart if it was running)
-        await updateStack(inputs.name, inputs.composeYaml, inputs.envFile, inputs.composeOverride, inputs.autostart, inputs.displayName);
+        await updateStack(inputs.name, inputs.composeYaml, inputs.envFile, inputs.composeOverride, inputs.autostart, inputs.displayName, inputs.extraFiles);
       }
 
       // Handle running state changes
@@ -272,6 +293,7 @@ export const stackResource = {
             inputs.composeOverride,
             inputs.autostart,
             inputs.displayName,
+            inputs.extraFiles,
           );
           const info = await getStack(inputs.name);
           const response = new providerProto.UpdateResponse();

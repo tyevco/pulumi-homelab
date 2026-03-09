@@ -108,6 +108,21 @@
     }
   },
   "types": {
+    "homelab:index:ExtraFile": {
+      "type": "object",
+      "description": "An extra file to include alongside the Docker Compose stack.",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The file name. Must match ^[a-zA-Z0-9][a-zA-Z0-9._-]*$."
+        },
+        "content": {
+          "type": "string",
+          "description": "The file content."
+        }
+      },
+      "required": ["name", "content"]
+    },
     "homelab:index:ContainerInfo": {
       "type": "object",
       "description": "Information about a container within a stack.",
@@ -179,6 +194,13 @@
           "type": "boolean",
           "description": "Whether the stack should be running (default: true).",
           "default": true
+        },
+        "extraFiles": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/homelab:index:ExtraFile"
+          },
+          "description": "Optional extra files to include alongside the Docker Compose stack."
         }
       },
       "requiredInputs": [
@@ -224,6 +246,13 @@
             "$ref": "#/types/homelab:index:ContainerInfo"
           },
           "description": "Information about the containers in this stack."
+        },
+        "extraFiles": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/homelab:index:ExtraFile"
+          },
+          "description": "Extra files included alongside the Docker Compose stack."
         }
       },
       "required": [
@@ -872,13 +901,18 @@
           "type": "boolean",
           "description": "Whether the container should autostart (default: false).",
           "default": false
+        },
+        "sourceContainer": {
+          "type": "string",
+          "description": "If set, clone this existing container instead of creating from scratch. Must match ^[a-z0-9_.-]+$."
+        },
+        "initialConfig": {
+          "type": "string",
+          "description": "Config appended after cloning (only used with sourceContainer). Triggers replacement on change."
         }
       },
       "requiredInputs": [
-        "name",
-        "dist",
-        "release",
-        "arch"
+        "name"
       ],
       "properties": {
         "name": {
@@ -920,13 +954,146 @@
         "memory": {
           "type": "string",
           "description": "The container's memory usage."
+        },
+        "sourceContainer": {
+          "type": "string",
+          "description": "The source container that was cloned (if applicable)."
+        },
+        "initialConfig": {
+          "type": "string",
+          "description": "Config appended after cloning."
+        }
+      },
+      "required": [
+        "name"
+      ]
+    },
+    "homelab:index:NotificationSettings": {
+      "description": "Manages notification provider settings on the homelab server. This is a singleton resource.",
+      "inputProperties": {
+        "ntfyEnabled": {
+          "type": "boolean",
+          "description": "Whether ntfy notifications are enabled."
+        },
+        "ntfyUrl": {
+          "type": "string",
+          "description": "ntfy server URL (required when ntfyEnabled is true)."
+        },
+        "discordEnabled": {
+          "type": "boolean",
+          "description": "Whether Discord notifications are enabled."
+        },
+        "discordWebhookUrl": {
+          "type": "string",
+          "description": "Discord webhook URL (required when discordEnabled is true)."
+        },
+        "gotifyEnabled": {
+          "type": "boolean",
+          "description": "Whether Gotify notifications are enabled."
+        },
+        "gotifyUrl": {
+          "type": "string",
+          "description": "Gotify server URL (required when gotifyEnabled is true)."
+        },
+        "gotifyToken": {
+          "type": "string",
+          "description": "Gotify application token (required when gotifyEnabled is true).",
+          "secret": true
+        },
+        "webhookEnabled": {
+          "type": "boolean",
+          "description": "Whether generic webhook notifications are enabled."
+        },
+        "webhookUrl": {
+          "type": "string",
+          "description": "Webhook URL (required when webhookEnabled is true)."
+        }
+      },
+      "requiredInputs": [],
+      "properties": {
+        "ntfyEnabled": {
+          "type": "boolean",
+          "description": "Whether ntfy notifications are enabled."
+        },
+        "ntfyUrl": {
+          "type": "string",
+          "description": "ntfy server URL."
+        },
+        "discordEnabled": {
+          "type": "boolean",
+          "description": "Whether Discord notifications are enabled."
+        },
+        "discordWebhookUrl": {
+          "type": "string",
+          "description": "Discord webhook URL."
+        },
+        "gotifyEnabled": {
+          "type": "boolean",
+          "description": "Whether Gotify notifications are enabled."
+        },
+        "gotifyUrl": {
+          "type": "string",
+          "description": "Gotify server URL."
+        },
+        "gotifyToken": {
+          "type": "string",
+          "description": "Gotify application token.",
+          "secret": true
+        },
+        "webhookEnabled": {
+          "type": "boolean",
+          "description": "Whether generic webhook notifications are enabled."
+        },
+        "webhookUrl": {
+          "type": "string",
+          "description": "Webhook URL."
+        }
+      },
+      "required": []
+    },
+    "homelab:index:UnraidVm": {
+      "description": "Manages an Unraid VM via the homelab agent REST API. Supports starting and stopping VMs.",
+      "inputProperties": {
+        "name": {
+          "type": "string",
+          "description": "The VM name as reported by Unraid/virsh."
+        },
+        "endpoint": {
+          "type": "string",
+          "description": "The agent endpoint name for the Unraid host (required — Unraid VMs are always agent-based)."
+        },
+        "running": {
+          "type": "boolean",
+          "description": "Whether the VM should be running (default: true).",
+          "default": true
+        }
+      },
+      "requiredInputs": [
+        "name",
+        "endpoint"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The VM name."
+        },
+        "endpoint": {
+          "type": "string",
+          "description": "The agent endpoint name."
+        },
+        "running": {
+          "type": "boolean",
+          "description": "Whether the VM should be running."
+        },
+        "state": {
+          "type": "string",
+          "description": "The current VM state as reported by Unraid (started, stopped, unknown)."
         }
       },
       "required": [
         "name",
-        "dist",
-        "release",
-        "arch"
+        "endpoint",
+        "state"
       ]
     }
   },

@@ -2,7 +2,7 @@
 export { Provider, ProviderArgs } from "./provider";
 
 // Resources
-export { Stack, StackArgs, ContainerInfo } from "./stack";
+export { Stack, StackArgs, ContainerInfo, ExtraFile } from "./stack";
 export { TraefikStaticConfig, TraefikStaticConfigArgs } from "./traefikStaticConfig";
 export { TraefikRoute, TraefikRouteArgs } from "./traefikRoute";
 export { OpnsenseFirewallRule, OpnsenseFirewallRuleArgs } from "./opnsenseFirewallRule";
@@ -12,3 +12,5 @@ export { OpnsenseUnboundForward, OpnsenseUnboundForwardArgs } from "./opnsenseUn
 export { OpnsenseUnboundAcl, OpnsenseUnboundAclArgs } from "./opnsenseUnboundAcl";
 export { OpnsenseUnboundDnsbl, OpnsenseUnboundDnsblArgs } from "./opnsenseUnboundDnsbl";
 export { LxcContainer, LxcContainerArgs } from "./lxcContainer";
+export { NotificationSettings, NotificationSettingsArgs } from "./notificationSettings";
+export { UnraidVm, UnraidVmArgs } from "./unraidVm";

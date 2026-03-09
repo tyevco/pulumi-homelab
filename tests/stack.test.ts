@@ -71,6 +71,31 @@ describe("stack check", () => {
     expect(err).toBeNull();
     expect(response.getFailuresList().length).toBe(0);
   });
+
+  it("returns no failures when valid extraFiles provided", async () => {
+    const call = makeCheckCall({
+      name: "mystack",
+      composeYaml: "version: '3'",
+      extraFiles: [{ name: "prometheus.yml", content: "scrape_configs: []" }],
+    });
+    const { err, response } = await callHandler(stackResource.check, call);
+
+    expect(err).toBeNull();
+    expect(response.getFailuresList().length).toBe(0);
+  });
+
+  it("returns failure when extraFiles has invalid name", async () => {
+    const call = makeCheckCall({
+      name: "mystack",
+      composeYaml: "version: '3'",
+      extraFiles: [{ name: "-invalid!", content: "data" }],
+    });
+    const { response } = await callHandler(stackResource.check, call);
+
+    const failures = response.getFailuresList();
+    expect(failures.length).toBe(1);
+    expect(failures[0].getProperty()).toBe("extraFiles[0].name");
+  });
 });
 
 describe("stack diff", () => {
@@ -170,6 +195,25 @@ describe("stack diff", () => {
 
     expect(response.getChanges()).toBe(providerProto.DiffResponse.DiffChanges.DIFF_SOME);
     expect(response.getDiffsList()).toContain("displayName");
+  });
+
+  it("detects extraFiles change as UPDATE", async () => {
+    const olds = { name: "test", composeYaml: "version: '3'", running: true, extraFiles: [{ name: "a.yml", content: "old" }] };
+    const news = { name: "test", composeYaml: "version: '3'", running: true, extraFiles: [{ name: "a.yml", content: "new" }] };
+    const call = makeDiffCall(olds, news);
+    const { response } = await callHandler(stackResource.diff, call);
+
+    expect(response.getChanges()).toBe(providerProto.DiffResponse.DiffChanges.DIFF_SOME);
+    expect(response.getDiffsList()).toContain("extraFiles");
+    expect(response.getReplacesList()).not.toContain("extraFiles");
+  });
+
+  it("returns DIFF_NONE when extraFiles unchanged", async () => {
+    const props = { name: "test", composeYaml: "version: '3'", running: true, extraFiles: [{ name: "a.yml", content: "same" }] };
+    const call = makeDiffCall(props, props);
+    const { response } = await callHandler(stackResource.diff, call);
+
+    expect(response.getChanges()).toBe(providerProto.DiffResponse.DiffChanges.DIFF_NONE);
   });
 
   it("detects multiple changes at once", async () => {
@@ -304,7 +348,7 @@ describe("stack create", () => {
 
     expect(err).toBeNull();
     expect(response.getId()).toBe("web");
-    expect(homelabClient.createStack).toHaveBeenCalledWith("web", "version: '3'", "FOO=bar", true, undefined, undefined, undefined);
+    expect(homelabClient.createStack).toHaveBeenCalledWith("web", "version: '3'", "FOO=bar", true, undefined, undefined, undefined, undefined);
   });
 
   it("creates stack with running=false (no start)", async () => {
@@ -316,7 +360,7 @@ describe("stack create", () => {
     const { err } = await callHandler(stackResource.create, call);
 
     expect(err).toBeNull();
-    expect(homelabClient.createStack).toHaveBeenCalledWith("web", "version: '3'", undefined, false, undefined, undefined, undefined);
+    expect(homelabClient.createStack).toHaveBeenCalledWith("web", "version: '3'", undefined, false, undefined, undefined, undefined, undefined);
   });
 
   it("returns error on API failure", async () => {

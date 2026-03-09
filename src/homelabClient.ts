@@ -16,6 +16,11 @@ export interface ContainerInfo {
   ports: string[];
 }
 
+export interface ExtraFile {
+  name: string;
+  content: string;
+}
+
 export interface StackInfo {
   name: string;
   status: string;
@@ -25,6 +30,7 @@ export interface StackInfo {
   autostart: boolean;
   displayName: string;
   containers: ContainerInfo[];
+  extraFiles: ExtraFile[];
 }
 
 let currentConfig: HomelabClientConfig | null = null;
@@ -133,6 +139,7 @@ export async function createStack(
   composeOverride?: string,
   autostart?: boolean,
   displayName?: string,
+  extraFiles?: ExtraFile[],
 ): Promise<StackInfo> {
   return request<StackInfo>("POST", "/api/stacks", {
     name,
@@ -142,6 +149,7 @@ export async function createStack(
     composeOverride: composeOverride || "",
     autostart: autostart || false,
     displayName: displayName || "",
+    extraFiles: extraFiles || [],
   });
 }
 
@@ -152,6 +160,7 @@ export async function updateStack(
   composeOverride?: string,
   autostart?: boolean,
   displayName?: string,
+  extraFiles?: ExtraFile[],
 ): Promise<StackInfo> {
   return request<StackInfo>("PUT", `/api/stacks/${encodeURIComponent(name)}`, {
     composeYaml,
@@ -159,6 +168,7 @@ export async function updateStack(
     composeOverride: composeOverride !== undefined ? composeOverride : undefined,
     autostart: autostart !== undefined ? autostart : undefined,
     displayName: displayName !== undefined ? displayName : undefined,
+    extraFiles: extraFiles !== undefined ? extraFiles : undefined,
   });
 }
 
@@ -250,4 +260,57 @@ export async function startLxcContainer(name: string): Promise<void> {
 
 export async function stopLxcContainer(name: string): Promise<void> {
   await request<{ ok: boolean; msg: string }>("POST", `/api/lxc/${encodeURIComponent(name)}/stop${endpointQuery()}`);
+}
+
+export async function cloneLxcContainer(sourceName: string, destName: string, initialConfig?: string): Promise<void> {
+  await request<{ ok: boolean; msg: string; container: LxcContainerInfo }>("POST", `/api/lxc/clone${endpointQuery()}`, {
+    sourceName,
+    destName,
+    initialConfig: initialConfig || "",
+  });
+}
+
+// Notification settings interfaces and functions
+export interface NotificationSettings {
+  ntfyEnabled?: boolean;
+  ntfyUrl?: string;
+  discordEnabled?: boolean;
+  discordWebhookUrl?: string;
+  gotifyEnabled?: boolean;
+  gotifyUrl?: string;
+  gotifyToken?: string;
+  webhookEnabled?: boolean;
+  webhookUrl?: string;
+}
+
+export async function getNotificationSettings(): Promise<NotificationSettings> {
+  const res = await request<{ ok: boolean; data: NotificationSettings }>("GET", "/api/notifications");
+  return res.data;
+}
+
+export async function saveNotificationSettings(settings: NotificationSettings): Promise<NotificationSettings> {
+  const res = await request<{ ok: boolean; data: NotificationSettings }>("PUT", "/api/notifications", settings);
+  return res.data;
+}
+
+// Unraid VM interfaces and functions
+export interface UnraidVmInfo {
+  name: string;
+  state: string;
+}
+
+export async function listUnraidVms(endpoint?: string): Promise<UnraidVmInfo[]> {
+  const query = endpoint ? `?endpoint=${encodeURIComponent(endpoint)}` : "";
+  const res = await request<{ ok: boolean; vms: UnraidVmInfo[] }>("GET", `/api/unraid/vms${query}`);
+  return res.vms;
+}
+
+export async function startUnraidVm(name: string, endpoint?: string): Promise<void> {
+  const query = endpoint ? `?endpoint=${encodeURIComponent(endpoint)}` : "";
+  await request<{ ok: boolean; msg: string }>("POST", `/api/unraid/vms/${encodeURIComponent(name)}/start${query}`);
+}
+
+export async function stopUnraidVm(name: string, endpoint?: string): Promise<void> {
+  const query = endpoint ? `?endpoint=${encodeURIComponent(endpoint)}` : "";
+  await request<{ ok: boolean; msg: string }>("POST", `/api/unraid/vms/${encodeURIComponent(name)}/stop${query}`);
 }

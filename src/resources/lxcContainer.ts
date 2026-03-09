@@ -3,6 +3,7 @@ import { structToObject, objectToStruct, makeCheckFailure, valuesEqual, GrpcCall
 import {
   getLxcContainer,
   createLxcContainer,
+  cloneLxcContainer,
   deleteLxcContainer,
   saveLxcConfig,
   startLxcContainer,
@@ -14,15 +15,15 @@ import {
 const providerProto = require("@pulumi/pulumi/proto/provider_pb");
 const emptyProto = require("google-protobuf/google/protobuf/empty_pb");
 
-const REPLACE_FIELDS = ["name", "dist", "release", "arch", "autostart"];
+const REPLACE_FIELDS = ["name", "dist", "release", "arch", "autostart", "sourceContainer", "initialConfig"];
 const UPDATE_FIELDS = ["config"];
 
 function containerToOutputs(info: LxcContainerInfo, inputs: Record<string, any>): Record<string, any> {
-  return {
+  const out: Record<string, any> = {
     name: inputs.name,
-    dist: inputs.dist,
-    release: inputs.release,
-    arch: inputs.arch,
+    dist: inputs.dist || "",
+    release: inputs.release || "",
+    arch: inputs.arch || "",
     config: inputs.config !== undefined ? inputs.config : (info.config || ""),
     autostart: inputs.autostart !== undefined ? inputs.autostart : (info.autostart || false),
     status: info.status,
@@ -30,6 +31,13 @@ function containerToOutputs(info: LxcContainerInfo, inputs: Record<string, any>)
     pid: info.pid || 0,
     memory: info.memory || "",
   };
+  if (inputs.sourceContainer !== undefined) {
+    out.sourceContainer = inputs.sourceContainer;
+  }
+  if (inputs.initialConfig !== undefined) {
+    out.initialConfig = inputs.initialConfig;
+  }
+  return out;
 }
 
 export const lxcContainerResource = {
@@ -42,14 +50,23 @@ export const lxcContainerResource = {
     } else if (!/^[a-z0-9_.-]+$/.test(inputs.name)) {
       failures.push(makeCheckFailure("name", "name must match ^[a-z0-9_.-]+$"));
     }
-    if (!inputs.dist) {
-      failures.push(makeCheckFailure("dist", "dist is required"));
-    }
-    if (!inputs.release) {
-      failures.push(makeCheckFailure("release", "release is required"));
-    }
-    if (!inputs.arch) {
-      failures.push(makeCheckFailure("arch", "arch is required"));
+
+    const isClone = !!inputs.sourceContainer;
+
+    if (isClone) {
+      if (!/^[a-z0-9_.-]+$/.test(inputs.sourceContainer)) {
+        failures.push(makeCheckFailure("sourceContainer", "sourceContainer must match ^[a-z0-9_.-]+$"));
+      }
+    } else {
+      if (!inputs.dist) {
+        failures.push(makeCheckFailure("dist", "dist is required"));
+      }
+      if (!inputs.release) {
+        failures.push(makeCheckFailure("release", "release is required"));
+      }
+      if (!inputs.arch) {
+        failures.push(makeCheckFailure("arch", "arch is required"));
+      }
     }
 
     // Default autostart to false if not specified
@@ -127,7 +144,12 @@ export const lxcContainerResource = {
 
     try {
       ensureConfigured();
-      await createLxcContainer(inputs.name, inputs.dist, inputs.release, inputs.arch);
+
+      if (inputs.sourceContainer) {
+        await cloneLxcContainer(inputs.sourceContainer, inputs.name, inputs.initialConfig);
+      } else {
+        await createLxcContainer(inputs.name, inputs.dist, inputs.release, inputs.arch);
+      }
 
       if (inputs.config) {
         await saveLxcConfig(inputs.name, inputs.config);
@@ -155,7 +177,7 @@ export const lxcContainerResource = {
       ensureConfigured();
       const info = await getLxcContainer(id);
 
-      const outputs = {
+      const outputs: Record<string, any> = {
         name: info.name,
         dist: currentInputs.dist || "",
         release: currentInputs.release || "",
@@ -167,18 +189,32 @@ export const lxcContainerResource = {
         pid: info.pid || 0,
         memory: info.memory || "",
       };
+      if (currentInputs.sourceContainer !== undefined) {
+        outputs.sourceContainer = currentInputs.sourceContainer;
+      }
+      if (currentInputs.initialConfig !== undefined) {
+        outputs.initialConfig = currentInputs.initialConfig;
+      }
 
-      const response = new providerProto.ReadResponse();
-      response.setId(id);
-      response.setProperties(objectToStruct(outputs));
-      response.setInputs(objectToStruct({
+      const inputsRecord: Record<string, any> = {
         name: info.name,
         dist: currentInputs.dist || "",
         release: currentInputs.release || "",
         arch: currentInputs.arch || "",
         config: info.config || "",
         autostart: info.autostart || false,
-      }));
+      };
+      if (currentInputs.sourceContainer !== undefined) {
+        inputsRecord.sourceContainer = currentInputs.sourceContainer;
+      }
+      if (currentInputs.initialConfig !== undefined) {
+        inputsRecord.initialConfig = currentInputs.initialConfig;
+      }
+
+      const response = new providerProto.ReadResponse();
+      response.setId(id);
+      response.setProperties(objectToStruct(outputs));
+      response.setInputs(objectToStruct(inputsRecord));
       callback(null, response);
     } catch (err: any) {
       if (err.message && (err.message.includes("404") || err.message.includes("not found"))) {

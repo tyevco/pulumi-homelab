@@ -9,6 +9,8 @@ import { opnsenseUnboundForwardResource } from "./resources/opnsenseUnboundForwa
 import { opnsenseUnboundAclResource } from "./resources/opnsenseUnboundAcl";
 import { opnsenseUnboundDnsblResource } from "./resources/opnsenseUnboundDnsbl";
 import { lxcContainerResource } from "./resources/lxcContainer";
+import { notificationSettingsResource } from "./resources/notificationSettings";
+import { unraidVmResource } from "./resources/unraidVm";
 
 import * as grpc from "@grpc/grpc-js";
 
@@ -32,6 +34,8 @@ const resourceHandlers: Record<string, ResourceHandler> = {
   "homelab:index:OpnsenseUnboundAcl": opnsenseUnboundAclResource,
   "homelab:index:OpnsenseUnboundDnsbl": opnsenseUnboundDnsblResource,
   "homelab:index:LxcContainer": lxcContainerResource,
+  "homelab:index:NotificationSettings": notificationSettingsResource,
+  "homelab:index:UnraidVm": unraidVmResource,
 };
 
 function getHandler(call: GrpcCall<any, any>): ResourceHandler | undefined {
