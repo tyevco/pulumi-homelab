@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.0](https://github.com/tyevco/pulumi-homelab/compare/v0.5.0...v0.6.0) (2026-03-09)
+
+
+### Features
+
+* add LXC agent endpoint, ExtraFile, NotificationSettings, UnraidVm + fix SDK publish ([a2d0635](https://github.com/tyevco/pulumi-homelab/commit/a2d0635f4547947855230a31ad1ea640119a0b84))
+
 ## [0.5.0](https://github.com/tyevco/pulumi-homelab/compare/v0.4.0...v0.5.0) (2026-03-09)
 
 
