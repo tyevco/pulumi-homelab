@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.5.0](https://github.com/tyevco/pulumi-homelab/compare/v0.4.0...v0.5.0) (2026-03-09)
+
+
+### Features
+
+* add extraFiles, LXC clone, NotificationSettings, and UnraidVm resources ([c329976](https://github.com/tyevco/pulumi-homelab/commit/c3299761d71fb7480c3d093674d2bf295cca36e6))
+* extraFiles, LXC clone, NotificationSettings, and UnraidVm resources ([ddb20ee](https://github.com/tyevco/pulumi-homelab/commit/ddb20eee6dfa7c2d86f6e86573e12dd9cda7dadd))
+* update SDK with ExtraFile, sourceContainer, NotificationSettings, UnraidVm ([cd799de](https://github.com/tyevco/pulumi-homelab/commit/cd799decb4da5951ea1d125be650e043e0a32d81))
+
 ## [0.4.0](https://github.com/tyevco/pulumi-homelab/compare/v0.3.6...v0.4.0) (2026-03-08)
 
 
